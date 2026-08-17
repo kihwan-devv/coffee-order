@@ -15,6 +15,8 @@ export function NewOrderPage({ teamCode }: { teamCode: string }) {
   const [showCafeForm, setShowCafeForm] = useState(false);
   const [cafeName, setCafeName] = useState("");
   const [officialMenuUrl, setOfficialMenuUrl] = useState("");
+  const [isCreating, setIsCreating] = useState(false);
+  const [createError, setCreateError] = useState("");
 
   useEffect(() => { void activateTeam(teamCode); }, [activateTeam, teamCode]);
 
@@ -36,9 +38,19 @@ export function NewOrderPage({ teamCode }: { teamCode: string }) {
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
-    if (!title.trim() || !cafeId) return;
-    const orderCode = await createRoom(team.id, title.trim(), cafeId, deadline);
-    router.push(`/team/${team.code}/order/${orderCode}`);
+    if (!title.trim() || !cafeId || isCreating) return;
+    setIsCreating(true);
+    setCreateError("");
+    try {
+      const orderCode = await createRoom(team.id, title.trim(), cafeId, deadline);
+      if (!orderCode) throw new Error("주문 코드가 반환되지 않았습니다.");
+      router.push(`/team/${team.code}/order/${orderCode}`);
+    } catch (value) {
+      const message = value instanceof Error ? value.message : "주문을 생성하지 못했습니다.";
+      console.error("order creation failed", value);
+      setCreateError(message);
+      setIsCreating(false);
+    }
   };
 
   return <main className="mx-auto min-h-screen max-w-xl p-5">
@@ -60,7 +72,8 @@ export function NewOrderPage({ teamCode }: { teamCode: string }) {
         </div>}
       </fieldset>
       <label className="block"><span className="mb-2 block text-sm font-bold">마감시간</span><input type="time" value={deadline} onChange={(event) => setDeadline(event.target.value)} className="rounded-2xl border border-stone-200 bg-white px-4 py-3.5 outline-none focus:ring-2 focus:ring-amber-300" /></label>
-      <button className="w-full rounded-2xl bg-amber-600 py-4 font-extrabold text-white">주문 만들기</button>
+      {createError && <p className="rounded-xl bg-rose-50 p-3 text-sm text-rose-700">{createError}</p>}
+      <button disabled={isCreating} className="w-full rounded-2xl bg-amber-600 py-4 font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-60">{isCreating ? "주문 만드는 중..." : "주문 만들기"}</button>
     </form>
   </main>;
 }
