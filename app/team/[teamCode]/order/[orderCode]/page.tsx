@@ -10,7 +10,7 @@ import type { OrderRoom } from "@/types";
 
 export default function OrderPage({ params }: { params: Promise<{ teamCode: string; orderCode: string }> }) {
   const { teamCode, orderCode } = use(params);
-  const { currentUser, teams, teamLoadStatus, error, activateTeam, getTeamMembers } = useOrderRooms();
+  const { currentUser, rooms, teams, teamLoadStatus, error, activateTeam, getTeamMembers } = useOrderRooms();
   const [order, setOrder] = useState<OrderRoom | null>(null);
   const [orderLoading, setOrderLoading] = useState(false);
   const [orderError, setOrderError] = useState("");
@@ -24,6 +24,7 @@ export default function OrderPage({ params }: { params: Promise<{ teamCode: stri
     void getOrder(team.id, orderCode).then((value) => { if (active) setOrder(value); }).catch((value) => { if (active) { setOrder(null); setOrderError(value instanceof Error ? value.message : "주문 정보를 불러오지 못했습니다."); } }).finally(() => { if (active) setOrderLoading(false); });
     return () => { active = false; };
   }, [currentUser, orderCode, team, teamLoadStatus]);
+  useEffect(() => { const updated = rooms.find((item) => item.teamId === team?.id && item.orderCode === orderCode); if (updated) setOrder(updated); }, [orderCode, rooms, team?.id]);
 
   if (teamLoadStatus === "idle" || teamLoadStatus === "authenticating") return <main className="p-8">익명 세션을 준비하는 중...</main>;
   if (teamLoadStatus === "loading-team" || teamLoadStatus === "joining") return <main className="p-8">팀 정보를 불러오는 중...</main>;

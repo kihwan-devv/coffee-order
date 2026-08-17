@@ -13,7 +13,7 @@ const menuText = (item: MenuRecommendation, menus: Menu[]) => `${menus.find((men
 function MenuPicker({ cafeId, menus, onSelect, onAddMenu }: {
   cafeId: string;
   menus: Menu[];
-  onSelect: (menu: Menu, temperature: Temperature) => void;
+  onSelect: (menu: Menu, temperature: Temperature) => Promise<void>;
   onAddMenu: (name: string, temperatures: Temperature[]) => void;
 }) {
   const available = menus.filter((menu) => menu.cafeId === cafeId);
@@ -25,6 +25,8 @@ function MenuPicker({ cafeId, menus, onSelect, onAddMenu }: {
   const [temperatures, setTemperatures] = useState<Temperature[]>(["ICED"]);
   const [showImport, setShowImport] = useState(false);
   const [selectedCandidates, setSelectedCandidates] = useState<string[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
   const officialCandidates = ["아메리카노", "카페라떼", "바닐라라떼", "콜드브루", "자몽 허니 블랙 티"];
 
   const selectMenu = (id: string) => {
@@ -50,6 +52,7 @@ function MenuPicker({ cafeId, menus, onSelect, onAddMenu }: {
     setSelectedCandidates([]);
     setShowImport(false);
   };
+  const submitOrder = async () => { if (!selectedMenu || isSubmitting) return; setIsSubmitting(true); setSubmitError(""); try { await onSelect(selectedMenu, temperature); } catch (value) { setSubmitError(value instanceof Error ? value.message : "주문하지 못했습니다."); } finally { setIsSubmitting(false); } };
 
   if (!selectedMenu) return null;
 
@@ -71,12 +74,16 @@ function MenuPicker({ cafeId, menus, onSelect, onAddMenu }: {
     <button type="button" onClick={() => setShowImport((value) => !value)} className="mt-3 text-xs font-bold text-stone-500 underline">공식 메뉴에서 가져오기 (프로토타입)</button>
     {showImport && <div className="mt-2 rounded-xl border border-sky-200 bg-sky-50 p-3"><p className="text-xs font-bold text-sky-900">공식 홈페이지 메뉴 후보</p><p className="mt-1 text-[11px] text-stone-500">현재는 선택 흐름을 검증하는 mock 목록입니다.</p><div className="mt-2 grid grid-cols-2 gap-2">{officialCandidates.map((candidate) => <label key={candidate} className="flex items-center gap-1 rounded-lg bg-white px-2 py-2 text-xs font-medium"><input type="checkbox" checked={selectedCandidates.includes(candidate)} onChange={() => setSelectedCandidates((previous) => previous.includes(candidate) ? previous.filter((item) => item !== candidate) : [...previous, candidate])} /> {candidate}</label>)}</div><button type="button" onClick={importSelectedMenus} disabled={selectedCandidates.length === 0} className="mt-3 rounded-lg bg-sky-700 px-3 py-2 text-xs font-bold text-white disabled:opacity-40">선택한 메뉴 추가</button></div>}
     <div className="mt-3 flex gap-2">{selectedMenu.supportedTemperatures.map((item) => <button type="button" key={item} onClick={() => setTemperature(item)} className={`rounded-full px-3 py-1 text-xs font-bold ${item === temperature ? "bg-stone-800 text-white" : "bg-stone-100 text-stone-600"}`}>{item}</button>)}</div>
-    <button type="button" onClick={() => onSelect(selectedMenu, temperature)} className="mt-3 w-full rounded-xl bg-stone-800 py-2.5 text-sm font-bold text-white">{selectedMenu.name} {temperature}로 주문</button>
+    <button type="button" disabled={isSubmitting} onClick={() => void submitOrder()} className="mt-3 w-full rounded-xl bg-stone-800 py-2.5 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-60">{isSubmitting ? "주문 중..." : "이걸로 주문"}</button>
+    {submitError && <p className="mt-2 text-xs font-bold text-rose-600">{submitError}</p>}
   </div>;
 }
 
-function Recommendation({ title, item, menus, merged, onPick }: { title: string; item: MenuRecommendation; menus: Menu[]; merged?: boolean; onPick: () => void }) {
-  return <div className="rounded-2xl border border-amber-200 bg-white p-3"><p className="text-xs font-bold text-stone-500">{merged ? "평소에도 자주 먹고 최근에도 먹었어요" : title}</p><p className="mt-1 font-extrabold">{menuText(item, menus)}</p><button type="button" onClick={onPick} className="mt-2 text-sm font-bold text-amber-700 underline">이걸로 주문</button></div>;
+function Recommendation({ title, item, menus, merged, onPick }: { title: string; item: MenuRecommendation; menus: Menu[]; merged?: boolean; onPick: () => Promise<void> }) {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
+  const pick = async () => { if (isSubmitting) return; setIsSubmitting(true); setSubmitError(""); try { await onPick(); } catch (value) { setSubmitError(value instanceof Error ? value.message : "주문하지 못했습니다."); } finally { setIsSubmitting(false); } };
+  return <div className="rounded-2xl border border-amber-200 bg-white p-3"><p className="text-xs font-bold text-stone-500">{merged ? "평소에도 자주 먹고 최근에도 먹었어요" : title}</p><p className="mt-1 font-extrabold">{menuText(item, menus)}</p><button type="button" disabled={isSubmitting} onClick={() => void pick()} className="mt-2 text-sm font-bold text-amber-700 underline disabled:opacity-50">{isSubmitting ? "주문 중..." : "이걸로 주문"}</button>{submitError && <p className="mt-2 text-xs font-bold text-rose-600">{submitError}</p>}</div>;
 }
 
 export function RoomDetail({ room, teamCode }: { room: OrderRoom; teamCode: string }) {
@@ -92,6 +99,9 @@ export function RoomDetail({ room, teamCode }: { room: OrderRoom; teamCode: stri
   const creator = users.find((item) => item.id === room.createdBy);
   const memberName = (memberId: string | null) => users.find((item) => item.id === memberId)?.name ?? "팀원";
   const mine = room.orders.find((item) => item.userId === currentUser?.id);
+  const [isMineEditing, setIsMineEditing] = useState(mine?.status === "PENDING");
+  const [isSkipping, setIsSkipping] = useState(false);
+  const [actionError, setActionError] = useState("");
   const complete = room.orders.filter((item) => item.status !== "PENDING").length;
   const isOpen = room.status === "OPEN";
   useEffect(() => {
@@ -104,6 +114,9 @@ export function RoomDetail({ room, teamCode }: { room: OrderRoom; teamCode: stri
   const sameMine = mineRec.frequent && mineRec.recent && mineRec.frequent.menuId === mineRec.recent.menuId && mineRec.frequent.temperature === mineRec.recent.temperature;
   const addRoomMenu = (name: string, supportedTemperatures: Temperature[]) => addMenu(room.cafeId, name, supportedTemperatures);
   const choose = (userId: string, item: MenuRecommendation) => updateOrder(room.id, userId, "SELECTED", { menuId: item.menuId, temperature: item.temperature });
+  const selectMine = async (menu: Menu, temperature: Temperature) => { await updateOrder(room.id, currentUser.id, "SELECTED", { menuId: menu.id, temperature }); setIsMineEditing(false); };
+  const chooseMine = async (item: MenuRecommendation) => { await updateOrder(room.id, currentUser.id, "SELECTED", { menuId: item.menuId, temperature: item.temperature }); setIsMineEditing(false); };
+  const skipMine = async () => { if (isSkipping) return; setIsSkipping(true); setActionError(""); try { await updateOrder(room.id, currentUser.id, "SKIP"); setIsMineEditing(false); } catch (value) { setActionError(value instanceof Error ? value.message : "변경하지 못했습니다."); } finally { setIsSkipping(false); } };
   const removeRoom = async () => { if (isDeleting) return; setIsDeleting(true); setDeleteError(""); try { await deleteRoom(room.id); router.push(`/team/${teamCode}`); } catch (value) { setDeleteError(value instanceof Error ? value.message : "주문방을 삭제하지 못했습니다."); setIsDeleting(false); } };
   const summary = room.orders.filter((item) => item.status === "SELECTED" && item.menuId && item.temperature).reduce<Record<string, string[]>>((result, item) => {
     const key = `${item.menuId}|${item.temperature}`;
@@ -118,13 +131,15 @@ export function RoomDetail({ room, teamCode }: { room: OrderRoom; teamCode: stri
     </section>
 
     <section className="mt-5 rounded-3xl border border-amber-200 bg-amber-50 p-5">
-      <div className="flex justify-between"><div><p className="font-extrabold">{currentUser.name}님의 주문</p><p className="mt-1 text-sm text-stone-600">{mine.status === "SELECTED" ? `${menus.find((item) => item.id === mine.menuId)?.name} ${mine.temperature} 선택 완료` : mine.status === "SKIP" ? "오늘은 안 마시기로 했어요" : mine.status === "ABSENT" ? "휴가 / 부재 상태예요" : "아직 메뉴를 고르지 않았어요"}</p></div><OrderStatusBadge status={mine.status} /></div>
-      {isOpen && <div className="mt-4 space-y-3">
-        {mineRec.frequent && <Recommendation title="평소 먹던 메뉴" item={mineRec.frequent} menus={menus} merged={Boolean(sameMine)} onPick={() => choose(currentUser.id, mineRec.frequent!)} />}
-        {mineRec.recent && !sameMine && <Recommendation title="최근 먹었던 메뉴" item={mineRec.recent} menus={menus} onPick={() => choose(currentUser.id, mineRec.recent!)} />}
+      <div className="flex justify-between"><div><p className="font-extrabold">{currentUser.name}님의 주문</p><p className="mt-1 text-sm text-stone-600">{mine.status === "SELECTED" ? `${menus.find((item) => item.id === mine.menuId)?.name} ${mine.temperature} · ✓ 주문 완료` : mine.status === "SKIP" ? "오늘 안 마심 · ✓ 선택 완료" : mine.status === "ABSENT" ? "휴가 / 부재 상태예요" : "아직 메뉴를 고르지 않았어요"}</p></div><OrderStatusBadge status={mine.status} /></div>
+      {isOpen && !isMineEditing && (mine.status === "SELECTED" || mine.status === "SKIP") && <button type="button" onClick={() => setIsMineEditing(true)} className="mt-4 text-sm font-bold text-amber-700 underline">주문 변경</button>}
+      {actionError && <p className="mt-3 text-sm font-bold text-rose-600">{actionError}</p>}
+      {isOpen && isMineEditing && <div className="mt-4 space-y-3 transition-opacity duration-150">
+        {mineRec.frequent && <Recommendation title="평소 먹던 메뉴" item={mineRec.frequent} menus={menus} merged={Boolean(sameMine)} onPick={() => chooseMine(mineRec.frequent!)} />}
+        {mineRec.recent && !sameMine && <Recommendation title="최근 먹었던 메뉴" item={mineRec.recent} menus={menus} onPick={() => chooseMine(mineRec.recent!)} />}
         <p className="text-xs font-bold text-stone-500">다른 메뉴 고르기</p>
-        <MenuPicker cafeId={room.cafeId} menus={menus} onAddMenu={addRoomMenu} onSelect={(menu, temperature) => updateOrder(room.id, currentUser.id, "SELECTED", { menuId: menu.id, temperature })} />
-        <button type="button" onClick={() => updateOrder(room.id, currentUser.id, "SKIP")} className="w-full rounded-2xl bg-stone-200 py-3 text-sm font-bold text-stone-600">오늘은 안 마셔요</button>
+        <MenuPicker cafeId={room.cafeId} menus={menus} onAddMenu={addRoomMenu} onSelect={selectMine} />
+        <button type="button" disabled={isSkipping} onClick={() => void skipMine()} className="w-full rounded-2xl bg-stone-200 py-3 text-sm font-bold text-stone-600 disabled:opacity-60">{isSkipping ? "처리 중..." : "오늘은 안 마셔요"}</button>
       </div>}
     </section>
 
@@ -142,7 +157,7 @@ export function RoomDetail({ room, teamCode }: { room: OrderRoom; teamCode: stri
         const same = rec.frequent && rec.recent && rec.frequent.menuId === rec.recent.menuId && rec.frequent.temperature === rec.recent.temperature;
         const delegated = order.status === "SELECTED" && order.selectedBy && order.selectedBy !== order.userId;
         return <div key={order.userId} className="border-b border-stone-100 py-4 last:border-0"><div className="flex items-center gap-3"><span className="grid size-10 place-items-center rounded-full bg-stone-100 font-black text-stone-600">{user.name.slice(0, 1)}</span><div className="min-w-0 flex-1"><p className="font-bold">{user.name}</p><p className="mt-0.5 text-xs text-stone-500">{selectedMenu ? `${selectedMenu.name} ${order.temperature}` : order.status === "ABSENT" && order.markedBy ? `${memberName(order.markedBy)}님이 표시` : ""}</p>{delegated && <p className="mt-0.5 text-[11px] text-stone-400">{memberName(order.selectedBy)}님이 대신 선택</p>}</div><OrderStatusBadge status={order.status} /></div>
-          {isOpen && order.status === "PENDING" && <div className="ml-[52px] mt-3 rounded-2xl bg-stone-50 p-3"><p className="text-xs font-bold text-stone-500">평소 먹던 메뉴</p>{rec.frequent ? <button type="button" onClick={() => choose(user.id, rec.frequent!)} className="mt-1 rounded-lg bg-amber-50 px-2 py-1 text-[11px] font-bold text-amber-800">{menuText(rec.frequent, menus)}로 주문</button> : <p className="mt-1 text-xs text-stone-400">주문 이력이 없어요.</p>}{rec.recent && !same && <><p className="mt-3 text-xs font-bold text-stone-500">최근 먹었던 메뉴</p><button type="button" onClick={() => choose(user.id, rec.recent!)} className="mt-1 rounded-lg bg-amber-50 px-2 py-1 text-[11px] font-bold text-amber-800">{menuText(rec.recent, menus)}로 주문</button></>}<div className="mt-3 flex gap-3"><button type="button" onClick={() => setPickerFor(pickerFor === user.id ? null : user.id)} className="text-xs font-bold text-stone-600 underline">다른 메뉴 골라주기</button><button type="button" onClick={() => updateOrder(room.id, user.id, "ABSENT")} className="text-xs font-bold text-violet-700 underline">휴가/부재</button></div>{pickerFor === user.id && <div className="mt-3"><MenuPicker cafeId={room.cafeId} menus={menus} onAddMenu={addRoomMenu} onSelect={(menu, temperature) => { updateOrder(room.id, user.id, "SELECTED", { menuId: menu.id, temperature }); setPickerFor(null); }} /></div>}</div>}
+          {isOpen && order.status === "PENDING" && <div className="ml-[52px] mt-3 rounded-2xl bg-stone-50 p-3"><p className="text-xs font-bold text-stone-500">평소 먹던 메뉴</p>{rec.frequent ? <button type="button" onClick={() => void choose(user.id, rec.frequent!)} className="mt-1 rounded-lg bg-amber-50 px-2 py-1 text-[11px] font-bold text-amber-800">{menuText(rec.frequent, menus)}로 주문</button> : <p className="mt-1 text-xs text-stone-400">주문 이력이 없어요.</p>}{rec.recent && !same && <><p className="mt-3 text-xs font-bold text-stone-500">최근 먹었던 메뉴</p><button type="button" onClick={() => void choose(user.id, rec.recent!)} className="mt-1 rounded-lg bg-amber-50 px-2 py-1 text-[11px] font-bold text-amber-800">{menuText(rec.recent, menus)}로 주문</button></>}<div className="mt-3 flex gap-3"><button type="button" onClick={() => setPickerFor(pickerFor === user.id ? null : user.id)} className="text-xs font-bold text-stone-600 underline">다른 메뉴 골라주기</button><button type="button" onClick={() => void updateOrder(room.id, user.id, "ABSENT")} className="text-xs font-bold text-violet-700 underline">휴가/부재</button></div>{pickerFor === user.id && <div className="mt-3"><MenuPicker cafeId={room.cafeId} menus={menus} onAddMenu={addRoomMenu} onSelect={async (menu, temperature) => { await updateOrder(room.id, user.id, "SELECTED", { menuId: menu.id, temperature }); setPickerFor(null); }} /></div>}</div>}
           {isOpen && order.status === "ABSENT" && <button type="button" onClick={() => updateOrder(room.id, user.id, "PENDING")} className="ml-[52px] mt-2 text-[11px] font-bold text-stone-500 underline">부재 취소</button>}
         </div>;
       })}</div> : <div className="mt-3 rounded-3xl border border-stone-200 bg-white px-4">{Object.keys(summary).length ? Object.entries(summary).map(([key, people]) => { const [menuId, temperature] = key.split("|"); return <div key={key} className="flex justify-between border-b border-stone-100 py-4 font-bold last:border-0"><div><p>{menus.find((item) => item.id === menuId)?.name ?? "추가 메뉴"} {temperature}</p>{!isOpen && <p className="mt-1 text-xs font-normal text-stone-500">{people.join(", ")}</p>}</div><span className="text-amber-700">× {people.length}</span></div>; }) : <p className="py-8 text-center text-sm text-stone-500">아직 선택된 메뉴가 없어요.</p>}</div>}
