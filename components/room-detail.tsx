@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { getRecommendations } from "@/lib/data/preferences";
 import type { Menu, MenuRecommendation, OrderRoom, Temperature } from "@/types";
@@ -8,28 +9,6 @@ import { useOrderRooms } from "./order-room-provider";
 import { OrderStatusBadge } from "./order-status-badge";
 
 const menuText = (item: MenuRecommendation, menus: Menu[]) => `${menus.find((menu) => menu.id === item.menuId)?.name ?? "메뉴"} ${item.temperature}`;
-
-function Countdown({ deadline, isOpen }: { deadline: string; isOpen: boolean }) {
-  const [now, setNow] = useState(() => new Date());
-
-  useEffect(() => {
-    const timer = window.setInterval(() => setNow(new Date()), 1000);
-    return () => window.clearInterval(timer);
-  }, []);
-
-  if (!isOpen) return <p className="mt-3 text-sm font-bold text-emerald-300">✅ 주문이 마감되었어요</p>;
-
-  const [hour, minute] = deadline.split(":").map(Number);
-  const endsAt = new Date(now);
-  endsAt.setHours(hour, minute, 0, 0);
-  const remaining = Math.max(0, endsAt.getTime() - now.getTime());
-  const totalMinutes = Math.floor(remaining / 60000);
-  const seconds = Math.floor((remaining % 60000) / 1000);
-  const emoji = remaining === 0 ? "⏰" : totalMinutes < 15 ? "🚨" : totalMinutes < 60 ? "☕" : "🧋";
-  const text = remaining === 0 ? "마감 시간이 지났어요" : `${String(totalMinutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")} 남음`;
-
-  return <p className={`mt-3 text-sm font-bold ${totalMinutes < 15 ? "text-rose-200" : "text-amber-200"}`}>{emoji} {text}</p>;
-}
 
 function MenuPicker({ cafeId, menus, onSelect, onAddMenu }: {
   cafeId: string;
@@ -101,10 +80,14 @@ function Recommendation({ title, item, menus, merged, onPick }: { title: string;
 }
 
 export function RoomDetail({ room, teamCode }: { room: OrderRoom; teamCode: string }) {
-  const { currentUser, updateOrder, toggleRoom, users, cafes, menus, addMenu } = useOrderRooms();
+  const router = useRouter();
+  const { currentUser, updateOrder, toggleRoom, deleteRoom, users, cafes, menus, addMenu } = useOrderRooms();
   const [tab, setTab] = useState<"people" | "menu">("people");
   const [pickerFor, setPickerFor] = useState<string | null>(null);
   const [recommendations, setRecommendations] = useState<Record<string, { frequent: MenuRecommendation | null; recent: MenuRecommendation | null }>>({});
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
   const cafe = cafes.find((item) => item.id === room.cafeId)!;
   const creator = users.find((item) => item.id === room.createdBy);
   const memberName = (memberId: string | null) => users.find((item) => item.id === memberId)?.name ?? "팀원";
@@ -121,6 +104,7 @@ export function RoomDetail({ room, teamCode }: { room: OrderRoom; teamCode: stri
   const sameMine = mineRec.frequent && mineRec.recent && mineRec.frequent.menuId === mineRec.recent.menuId && mineRec.frequent.temperature === mineRec.recent.temperature;
   const addRoomMenu = (name: string, supportedTemperatures: Temperature[]) => addMenu(room.cafeId, name, supportedTemperatures);
   const choose = (userId: string, item: MenuRecommendation) => updateOrder(room.id, userId, "SELECTED", { menuId: item.menuId, temperature: item.temperature });
+  const removeRoom = async () => { if (isDeleting) return; setIsDeleting(true); setDeleteError(""); try { await deleteRoom(room.id); router.push(`/team/${teamCode}`); } catch (value) { setDeleteError(value instanceof Error ? value.message : "주문방을 삭제하지 못했습니다."); setIsDeleting(false); } };
   const summary = room.orders.filter((item) => item.status === "SELECTED" && item.menuId && item.temperature).reduce<Record<string, string[]>>((result, item) => {
     const key = `${item.menuId}|${item.temperature}`;
     result[key] = [...(result[key] ?? []), users.find((user) => user.id === item.userId)?.name ?? "팀원"];
@@ -130,7 +114,7 @@ export function RoomDetail({ room, teamCode }: { room: OrderRoom; teamCode: stri
   return <main className="mx-auto min-h-screen max-w-xl p-5 pb-12">
     <Link href={`/team/${teamCode}`} className="text-sm font-bold text-stone-500">← 주문방 목록</Link>
     <section className="mt-5 rounded-3xl bg-stone-800 p-5 text-white">
-      <div className="flex items-start justify-between gap-3"><div><p className="text-sm font-bold text-amber-300">{cafe.emoji} {cafe.name}</p><h1 className="mt-1 text-2xl font-black">{room.name}</h1><p className="mt-3 text-sm text-stone-300">{creator?.name ?? "팀원"}님이 만들었어요 · 마감 {room.deadline}</p><Countdown deadline={room.deadline} isOpen={isOpen} /></div><OrderStatusBadge status={room.status} /></div>
+      <div className="flex items-start justify-between gap-3"><div><p className="text-sm font-bold text-amber-300">{cafe.emoji} {cafe.name}</p><h1 className="mt-1 text-2xl font-black">{room.name}</h1><p className="mt-3 text-sm text-stone-300">{creator?.name ?? "팀원"}님이 만들었어요</p></div><OrderStatusBadge status={room.status} /></div>
     </section>
 
     <section className="mt-5 rounded-3xl border border-amber-200 bg-amber-50 p-5">
@@ -149,6 +133,7 @@ export function RoomDetail({ room, teamCode }: { room: OrderRoom; teamCode: stri
       <div className="mt-3 h-2 overflow-hidden rounded-full bg-stone-200"><div className="h-full bg-emerald-500" style={{ width: `${complete / room.orders.length * 100}%` }} /></div>
       {isOpen && room.createdBy === currentUser.id && <button type="button" onClick={() => toggleRoom(room.id)} className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 py-4 text-sm font-extrabold text-white shadow-lg shadow-emerald-200 transition hover:brightness-105 active:scale-[0.99]"><span className="grid size-6 place-items-center rounded-full bg-white/20">✓</span> 주문 완료하고 마감하기</button>}
       {!isOpen && <p className="mt-4 rounded-2xl bg-emerald-50 px-4 py-3 text-center text-sm font-bold text-emerald-800">✓ 이 주문은 완료되어 메뉴별 내역을 확인할 수 있어요.</p>}
+      {room.createdBy === currentUser.id && <div className="mt-4"><button type="button" onClick={() => setShowDeleteConfirm(true)} className="w-full rounded-2xl border border-rose-200 py-3 text-sm font-bold text-rose-600">주문방 삭제</button>{showDeleteConfirm && <div className="mt-3 rounded-2xl border border-rose-200 bg-rose-50 p-4"><p className="font-bold text-rose-900">이 주문방을 삭제할까요?</p><p className="mt-1 text-sm text-rose-700">참여자의 주문 내역도 함께 삭제됩니다.</p>{deleteError && <p className="mt-3 text-sm font-bold text-rose-700">{deleteError}</p>}<div className="mt-4 flex justify-end gap-2"><button type="button" disabled={isDeleting} onClick={() => setShowDeleteConfirm(false)} className="rounded-xl bg-white px-4 py-2 text-sm font-bold text-stone-600 disabled:opacity-50">취소</button><button type="button" disabled={isDeleting} onClick={() => void removeRoom()} className="rounded-xl bg-rose-600 px-4 py-2 text-sm font-bold text-white disabled:opacity-50">{isDeleting ? "삭제 중..." : "삭제"}</button></div></div>}</div>}
       <div className="mt-4 flex rounded-2xl bg-stone-100 p-1"><button type="button" onClick={() => setTab("people")} className={`flex-1 rounded-xl py-2 text-sm font-bold ${tab === "people" ? "bg-white shadow-sm" : "text-stone-500"}`}>사람별 보기</button><button type="button" onClick={() => setTab("menu")} className={`flex-1 rounded-xl py-2 text-sm font-bold ${tab === "menu" ? "bg-white shadow-sm" : "text-stone-500"}`}>메뉴별 보기</button></div>
       {tab === "people" ? <div className="mt-3 rounded-3xl border border-stone-200 bg-white px-4">{room.orders.map((order) => {
         const user = users.find((item) => item.id === order.userId)!;

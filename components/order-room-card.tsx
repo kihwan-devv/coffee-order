@@ -18,7 +18,7 @@ export function OrderRoomCard({ room, teamCode }: { room: OrderRoom; teamCode: s
       <div className="min-w-0 flex-1">
         <div className="flex justify-between gap-2"><h2 className="truncate font-extrabold">{room.name}</h2><OrderStatusBadge status={room.status} /></div>
         <p className="mt-1 text-sm text-stone-500">{cafe.name} · {maker?.name ?? "팀원"}님이 만듦</p>
-        <div className="mt-4 flex items-center justify-between text-xs"><span className="font-bold text-stone-700">마감 {room.deadline}</span><span className="text-stone-500">응답 <b className="text-emerald-700">{complete}</b> / {room.orders.length}</span></div>
+        <div className="mt-4 flex items-center justify-end text-xs"><span className="text-stone-500">응답 <b className="text-emerald-700">{complete}</b> / {room.orders.length}</span></div>
         <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-stone-100"><div className="h-full rounded-full bg-emerald-500" style={{ width: `${complete / room.orders.length * 100}%` }} /></div>
       </div>
     </div>

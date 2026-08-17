@@ -2,13 +2,13 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { ensureAnonymousSession, resetSessionInitialization } from "@/lib/data/auth";
 import { createCafe, createMenu, listCafesAndMenus } from "@/lib/data/cafes";
-import { closeOrder, createOrder, listOrders, updateResponse } from "@/lib/data/orders";
+import { closeOrder, createOrder, deleteOrder, listOrders, updateResponse } from "@/lib/data/orders";
 import { createTeam as createTeamRpc, getCurrentTeamMember, getTeamLanding, joinTeam, TeamNotFoundError } from "@/lib/data/teams";
 import { createClient } from "@/lib/supabase/client";
 import type { Cafe, Menu, OrderRoom, OrderStatus, Team, Temperature, User } from "@/types";
 
 export type TeamLoadStatus = "idle" | "authenticating" | "loading-team" | "ready" | "not-found" | "joining" | "error";
-type Context = { currentUser: User | null; ready: boolean; loading: boolean; error: string | null; teamLoadStatus: TeamLoadStatus; users: User[]; teams: Team[]; rooms: OrderRoom[]; cafes: Cafe[]; menus: Menu[]; activateTeam: (code: string) => Promise<void>; selectUser: (id: string, code: string) => Promise<void>; clearUser: () => void; createTeam: (name: string, members: string[], creator: string) => Promise<string>; getTeamMembers: (id: string) => User[]; createRoom: (teamId: string, name: string, cafeId: string, deadline: string) => Promise<string>; updateOrder: (roomId: string, userId: string, status: OrderStatus, selection?: { menuId: string; temperature: Temperature }) => Promise<void>; toggleRoom: (id: string) => Promise<void>; addCafe: (name: string, url?: string) => Promise<Cafe>; addMenu: (cafeId: string, name: string, temperatures: Temperature[]) => Promise<Menu>; };
+type Context = { currentUser: User | null; ready: boolean; loading: boolean; error: string | null; teamLoadStatus: TeamLoadStatus; users: User[]; teams: Team[]; rooms: OrderRoom[]; cafes: Cafe[]; menus: Menu[]; activateTeam: (code: string) => Promise<void>; selectUser: (id: string, code: string) => Promise<void>; clearUser: () => void; createTeam: (name: string, members: string[], creator: string) => Promise<string>; getTeamMembers: (id: string) => User[]; createRoom: (teamId: string, name: string, cafeId: string) => Promise<string>; deleteRoom: (id: string) => Promise<void>; updateOrder: (roomId: string, userId: string, status: OrderStatus, selection?: { menuId: string; temperature: Temperature }) => Promise<void>; toggleRoom: (id: string) => Promise<void>; addCafe: (name: string, url?: string) => Promise<Cafe>; addMenu: (cafeId: string, name: string, temperatures: Temperature[]) => Promise<Menu>; };
 const OrderContext = createContext<Context | null>(null);
 
 function errorMessage(value: unknown) {
@@ -58,13 +58,14 @@ export function OrderRoomProvider({ children }: { children: React.ReactNode }) {
     selectUser: async (id, code) => { setError(null); setTeamLoadStatus("joining"); try { await ensureAnonymousSession(); await joinTeam(code, id); setCurrentUser(users.find((item) => item.id === id) ?? null); setTeamLoadStatus("ready"); } catch (value) { console.error("[Team join]", value); fail(value); setTeamLoadStatus("error"); } },
     clearUser: async () => { await createClient().auth.signOut(); resetSessionInitialization(); await ensureAnonymousSession(); setCurrentUser(null); },
     createTeam: async (name, members, creator) => { await ensureAnonymousSession(); const result = await createTeamRpc(name, members, creator); await activateTeam(result.teamCode); return result.teamCode; }, getTeamMembers: () => users,
-    createRoom: async (teamId, name, cafeId, deadline) => {
+    createRoom: async (teamId, name, cafeId) => {
       const sessionMember = await getCurrentTeamMember(teamId);
       if (!sessionMember?.id) throw new Error("현재 팀 사용자를 확인할 수 없습니다.");
       if (!currentUser || currentUser.id !== sessionMember.id) throw new Error("현재 화면의 팀 사용자와 인증 세션의 TeamMember가 일치하지 않습니다.");
-      const result = await createOrder({ teamId, title: name, cafeId, currentMemberId: sessionMember.id, deadline });
+      const result = await createOrder({ teamId, title: name, cafeId, currentMemberId: sessionMember.id });
       return result.orderCode;
     },
+    deleteRoom: async (id) => { await deleteOrder(id); setRooms((items) => items.filter((item) => item.id !== id)); },
     updateOrder: async (roomId, userId, status, selection) => { if (!currentUser) return; try { await updateResponse(roomId, userId, currentUser.id, status, selection); await reload(roomId); } catch (value) { fail(value); } }, toggleRoom: async (id) => { try { await closeOrder(id); await reload(id); } catch (value) { fail(value); } },
     addCafe: async (name, url) => { const item = await createCafe(name, url); setCafes((all) => [...all, item]); return item; }, addMenu: async (cafeId, name, temperatures) => { const item = await createMenu(cafeId, name, temperatures); setMenus((all) => [...all, item]); return item; },
   }), [activateTeam, cafes, currentUser, error, fail, menus, ready, reload, rooms, teamLoadStatus, teams, users]);

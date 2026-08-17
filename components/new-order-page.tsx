@@ -11,7 +11,6 @@ export function NewOrderPage({ teamCode }: { teamCode: string }) {
   const team = teams.find((item) => item.code === teamCode);
   const [title, setTitle] = useState("");
   const [cafeId, setCafeId] = useState("");
-  const [deadline, setDeadline] = useState("14:30");
   const [showCafeForm, setShowCafeForm] = useState(false);
   const [cafeName, setCafeName] = useState("");
   const [officialMenuUrl, setOfficialMenuUrl] = useState("");
@@ -42,7 +41,7 @@ export function NewOrderPage({ teamCode }: { teamCode: string }) {
     setIsCreating(true);
     setCreateError("");
     try {
-      const orderCode = await createRoom(team.id, title.trim(), cafeId, deadline);
+      const orderCode = await createRoom(team.id, title.trim(), cafeId);
       if (!orderCode) throw new Error("주문 코드가 반환되지 않았습니다.");
       router.push(`/team/${team.code}/order/${orderCode}`);
     } catch (value) {
@@ -58,7 +57,7 @@ export function NewOrderPage({ teamCode }: { teamCode: string }) {
     <h1 className="text-3xl font-black tracking-tight">새 주문 만들기</h1>
     <p className="mt-2 text-sm text-stone-500">{team.name}의 활성 팀원이 모두 주문 대상에 포함돼요.</p>
     <form onSubmit={submit} className="mt-7 space-y-6">
-      <label className="block"><span className="mb-2 block text-sm font-bold">주문 제목</span><input autoFocus required value={title} onChange={(event) => setTitle(event.target.value)} placeholder="예: Eric이 쏩니다" className="w-full rounded-2xl border border-stone-200 bg-white px-4 py-3.5 outline-none focus:ring-2 focus:ring-amber-300" /></label>
+      <label className="block"><span className="mb-2 block text-sm font-bold">주문 제목</span><input autoFocus required value={title} onChange={(event) => setTitle(event.target.value)} placeholder="예: 오후 커피 주문" className="w-full rounded-2xl border border-stone-200 bg-white px-4 py-3.5 outline-none focus:ring-2 focus:ring-amber-300" /></label>
       <fieldset>
         <legend className="mb-2 text-sm font-bold">카페 선택</legend>
         <div className="grid gap-2 sm:grid-cols-3">{cafes.map((cafe) => <button type="button" key={cafe.id} onClick={() => setCafeId(cafe.id)} className={`rounded-2xl border p-3 text-left ${cafeId === cafe.id ? "border-amber-500 bg-amber-50 ring-1 ring-amber-500" : "border-stone-200 bg-white"}`}><span className={`mr-2 inline-grid size-8 place-items-center rounded-xl ${cafe.color}`}>{cafe.emoji}</span><span className="text-sm font-bold">{cafe.name}</span></button>)}</div>
@@ -71,7 +70,6 @@ export function NewOrderPage({ teamCode }: { teamCode: string }) {
           <button type="button" onClick={createCafe} className="mt-3 rounded-xl bg-amber-600 px-4 py-2 text-sm font-bold text-white">카페 추가</button>
         </div>}
       </fieldset>
-      <label className="block"><span className="mb-2 block text-sm font-bold">마감시간</span><input type="time" value={deadline} onChange={(event) => setDeadline(event.target.value)} className="rounded-2xl border border-stone-200 bg-white px-4 py-3.5 outline-none focus:ring-2 focus:ring-amber-300" /></label>
       {createError && <p className="rounded-xl bg-rose-50 p-3 text-sm text-rose-700">{createError}</p>}
       <button disabled={isCreating} className="w-full rounded-2xl bg-amber-600 py-4 font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-60">{isCreating ? "주문 만드는 중..." : "주문 만들기"}</button>
     </form>
