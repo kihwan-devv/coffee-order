@@ -1,7 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- relation shape is normalized here. */
 import type { PostgrestError } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
-import { one, team, user, type Row } from "./shared";
+import { one } from "./shared";
+import type { Team, User } from "@/types";
 
 export class TeamNotFoundError extends Error {
   constructor(public readonly teamCode: string) {
@@ -29,12 +30,22 @@ export async function createTeam(name: string, memberNames: string[], creatorNam
 export async function getTeamLanding(teamCode: string) {
   const { data, error } = await createClient().rpc("get_team_landing", { p_team_code: teamCode });
   if (error) { logRpcError("get_team_landing", error); throw error; }
-  if (data == null || (Array.isArray(data) && data.length === 0)) throw new TeamNotFoundError(teamCode);
-  const root = one(data);
-  const teamRow = root.team ?? root;
-  if (!teamRow || !(teamRow.id ?? teamRow.team_id)) throw new TeamNotFoundError(teamCode);
-  const members: Row[] = root.team_members ?? root.members ?? [];
-  return { team: team(teamRow), members: members.map(user) };
+  console.log("get_team_landing raw data:", data);
+  if (data === null) throw new TeamNotFoundError(teamCode);
+
+  const landing = data as { id?: unknown; teamCode?: unknown; name?: unknown; members?: unknown };
+  if (typeof landing.id !== "string" || typeof landing.teamCode !== "string" || typeof landing.name !== "string" || !Array.isArray(landing.members)) {
+    throw new Error("get_team_landing RPC가 예상한 { id, teamCode, name, members } 구조를 반환하지 않았습니다.");
+  }
+  const members: User[] = landing.members.map((member, index) => {
+    if (!member || typeof member !== "object" || !("id" in member) || !("name" in member) || typeof member.id !== "string" || typeof member.name !== "string") {
+      throw new Error(`get_team_landing members[${index}]의 id/name이 올바르지 않습니다.`);
+    }
+    return { id: member.id, name: member.name, createdAt: "" };
+  });
+  const result: Team = { id: landing.id, code: landing.teamCode, name: landing.name, createdBy: "", createdAt: "" };
+  console.log("get_team_landing validated data:", { id: result.id, teamCode: result.code, name: result.name, members });
+  return { team: result, members };
 }
 
 export async function joinTeam(teamCode: string, teamMemberId: string) {
@@ -50,5 +61,5 @@ export async function getCurrentTeamMember(teamId: string) {
     throw error;
   }
   const member = (data as any)?.team_members;
-  return member ? user(member) : null;
+  return member ? { id: member.id, name: member.name, createdAt: member.created_at ?? "" } : null;
 }

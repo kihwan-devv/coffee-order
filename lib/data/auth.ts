@@ -10,7 +10,10 @@ async function initializeSession(): Promise<Session> {
     console.error("[Supabase auth.getSession]", error);
     throw error;
   }
-  if (data.session?.access_token) return data.session;
+  if (data.session?.access_token) {
+    console.log("Supabase session ready:", { source: "existing", userId: data.session.user.id, hasAccessToken: true });
+    return data.session;
+  }
 
   const result = await supabase.auth.signInAnonymously();
   if (result.error) {
@@ -22,6 +25,7 @@ async function initializeSession(): Promise<Session> {
     console.error("[Supabase auth.signInAnonymously]", missingSession);
     throw missingSession;
   }
+  console.log("Supabase session ready:", { source: "anonymous-sign-in", userId: result.data.session.user.id, hasAccessToken: true });
   return result.data.session;
 }
 
