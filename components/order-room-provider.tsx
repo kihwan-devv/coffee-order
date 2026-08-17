@@ -42,8 +42,8 @@ export function OrderRoomProvider({ children }: { children: React.ReactNode }) {
       if (!session.access_token) throw new Error("인증 세션에 access_token이 없습니다.");
       setTeamLoadStatus("loading-team");
       const landing = await getTeamLanding(code);
-      const [nextRooms, member] = await Promise.all([listOrders(landing.team.id), getCurrentTeamMember(landing.team.id)]);
-      setTeams([landing.team]); setUsers(landing.members); setRooms(nextRooms); setCurrentUser(member); setTeamLoadStatus("ready");
+      const [nextRooms, member, cafeData] = await Promise.all([listOrders(landing.team.id), getCurrentTeamMember(landing.team.id), listCafesAndMenus()]);
+      setTeams([landing.team]); setUsers(landing.members); setRooms(nextRooms); setCurrentUser(member); setCafes(cafeData.cafes); setMenus(cafeData.menus); setTeamLoadStatus("ready");
     } catch (value) {
       setTeams([]); setUsers([]); setRooms([]); setCurrentUser(null);
       if (value instanceof TeamNotFoundError) { setError(null); setTeamLoadStatus("not-found"); }

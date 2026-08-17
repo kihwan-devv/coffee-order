@@ -4,7 +4,7 @@ import type { OrderStatus, Temperature } from "@/types";
 
 const query = "*, order_responses(*)";
 export async function listOrders(teamId: string) { const { data, error } = await createClient().from("orders").select(query).eq("team_id", teamId).order("created_at", { ascending: false }); if (error) throw error; return data.map(order); }
-export async function getOrder(teamId: string, orderCode: string) { const { data, error } = await createClient().from("orders").select(query).eq("team_id", teamId).eq("order_code", orderCode).single(); if (error) throw error; return order(data); }
+export async function getOrder(teamId: string, orderCode: string) { const { data, error } = await createClient().from("orders").select(query).eq("team_id", teamId).eq("order_code", orderCode).single(); if (error) { console.error("get order error", { code: error.code, message: error.message, details: error.details, hint: error.hint }); throw error; } return order(data); }
 export async function createOrder(input: { teamId: string; title: string; cafeId: string; currentMemberId: string; deadline: string }) {
   const [hours, minutes] = input.deadline.split(":").map(Number);
   if (!Number.isInteger(hours) || !Number.isInteger(minutes) || hours < 0 || hours > 23 || minutes < 0 || minutes > 59) throw new Error("마감 시간 형식이 올바르지 않습니다.");
