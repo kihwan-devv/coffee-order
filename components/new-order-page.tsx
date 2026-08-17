@@ -16,9 +16,7 @@ export function NewOrderPage({ teamCode }: { teamCode: string }) {
   const [cafeName, setCafeName] = useState("");
   const [officialMenuUrl, setOfficialMenuUrl] = useState("");
 
-  useEffect(() => {
-    if (team) activateTeam(teamCode);
-  }, [activateTeam, team, teamCode]);
+  useEffect(() => { void activateTeam(teamCode); }, [activateTeam, teamCode]);
 
   useEffect(() => {
     if (!cafeId && cafes[0]) setCafeId(cafes[0].id);
@@ -26,20 +24,20 @@ export function NewOrderPage({ teamCode }: { teamCode: string }) {
 
   if (!team || !currentUser) return null;
 
-  const createCafe = () => {
+  const createCafe = async () => {
     const name = cafeName.trim();
     if (!name) return;
-    const cafe = addCafe(name, officialMenuUrl.trim());
+    const cafe = await addCafe(name, officialMenuUrl.trim());
     setCafeId(cafe.id);
     setCafeName("");
     setOfficialMenuUrl("");
     setShowCafeForm(false);
   };
 
-  const submit = (event: FormEvent) => {
+  const submit = async (event: FormEvent) => {
     event.preventDefault();
     if (!title.trim() || !cafeId) return;
-    const orderCode = createRoom(team.id, title.trim(), cafeId, deadline);
+    const orderCode = await createRoom(team.id, title.trim(), cafeId, deadline);
     router.push(`/team/${team.code}/order/${orderCode}`);
   };
 

@@ -12,9 +12,7 @@ export default function OrderPage({ params }: { params: Promise<{ teamCode: stri
   const { rooms, ready, currentUser, teams, activateTeam, getTeamMembers } = useOrderRooms();
   const team = teams.find((item) => item.code === teamCode);
 
-  useEffect(() => {
-    if (team) activateTeam(teamCode);
-  }, [activateTeam, team, teamCode]);
+  useEffect(() => { void activateTeam(teamCode); }, [activateTeam, teamCode]);
 
   if (!ready) return null;
   if (!team) return <main className="p-8"><Link href="/">팀을 찾을 수 없어요.</Link></main>;

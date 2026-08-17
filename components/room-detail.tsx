@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { getRecommendations } from "@/lib/mock-data";
+import { getRecommendations } from "@/lib/data/preferences";
 import type { Menu, MenuRecommendation, OrderRoom, Temperature } from "@/types";
 import { useOrderRooms } from "./order-room-provider";
 import { OrderStatusBadge } from "./order-status-badge";
@@ -104,13 +104,19 @@ export function RoomDetail({ room, teamCode }: { room: OrderRoom; teamCode: stri
   const { currentUser, updateOrder, toggleRoom, users, cafes, menus, addMenu } = useOrderRooms();
   const [tab, setTab] = useState<"people" | "menu">("people");
   const [pickerFor, setPickerFor] = useState<string | null>(null);
+  const [recommendations, setRecommendations] = useState<Record<string, { frequent: MenuRecommendation | null; recent: MenuRecommendation | null }>>({});
   const cafe = cafes.find((item) => item.id === room.cafeId)!;
   const creator = users.find((item) => item.id === room.createdBy) ?? users[0];
   const mine = room.orders.find((item) => item.userId === currentUser?.id);
-  if (!currentUser || !mine) return null;
   const complete = room.orders.filter((item) => item.status !== "PENDING").length;
   const isOpen = room.status === "OPEN";
-  const mineRec = getRecommendations(currentUser.id, room.cafeId);
+  useEffect(() => {
+    let active = true;
+    void Promise.all(users.map(async (member) => [member.id, await getRecommendations(member.id, room.cafeId)] as const)).then((items) => { if (active) setRecommendations(Object.fromEntries(items)); });
+    return () => { active = false; };
+  }, [room.cafeId, users]);
+  if (!currentUser || !mine) return null;
+  const mineRec = recommendations[currentUser.id] ?? { frequent: null, recent: null };
   const sameMine = mineRec.frequent && mineRec.recent && mineRec.frequent.menuId === mineRec.recent.menuId && mineRec.frequent.temperature === mineRec.recent.temperature;
   const addRoomMenu = (name: string, supportedTemperatures: Temperature[]) => addMenu(room.cafeId, name, supportedTemperatures);
   const choose = (userId: string, item: MenuRecommendation) => updateOrder(room.id, userId, "SELECTED", { menuId: item.menuId, temperature: item.temperature });
@@ -140,13 +146,13 @@ export function RoomDetail({ room, teamCode }: { room: OrderRoom; teamCode: stri
     <section className="mt-5">
       <div className="flex items-end justify-between"><div><h2 className="text-xl font-black">전체 주문 현황</h2><p className="mt-1 text-sm text-stone-500">응답 완료 {complete}명 · 미응답 {room.orders.length - complete}명</p></div></div>
       <div className="mt-3 h-2 overflow-hidden rounded-full bg-stone-200"><div className="h-full bg-emerald-500" style={{ width: `${complete / room.orders.length * 100}%` }} /></div>
-      {isOpen && <button type="button" onClick={() => toggleRoom(room.id)} className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 py-4 text-sm font-extrabold text-white shadow-lg shadow-emerald-200 transition hover:brightness-105 active:scale-[0.99]"><span className="grid size-6 place-items-center rounded-full bg-white/20">✓</span> 주문 완료하고 마감하기</button>}
+      {isOpen && room.createdBy === currentUser.id && <button type="button" onClick={() => toggleRoom(room.id)} className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 py-4 text-sm font-extrabold text-white shadow-lg shadow-emerald-200 transition hover:brightness-105 active:scale-[0.99]"><span className="grid size-6 place-items-center rounded-full bg-white/20">✓</span> 주문 완료하고 마감하기</button>}
       {!isOpen && <p className="mt-4 rounded-2xl bg-emerald-50 px-4 py-3 text-center text-sm font-bold text-emerald-800">✓ 이 주문은 완료되어 메뉴별 내역을 확인할 수 있어요.</p>}
       <div className="mt-4 flex rounded-2xl bg-stone-100 p-1"><button type="button" onClick={() => setTab("people")} className={`flex-1 rounded-xl py-2 text-sm font-bold ${tab === "people" ? "bg-white shadow-sm" : "text-stone-500"}`}>사람별 보기</button><button type="button" onClick={() => setTab("menu")} className={`flex-1 rounded-xl py-2 text-sm font-bold ${tab === "menu" ? "bg-white shadow-sm" : "text-stone-500"}`}>메뉴별 보기</button></div>
       {tab === "people" ? <div className="mt-3 rounded-3xl border border-stone-200 bg-white px-4">{room.orders.map((order) => {
         const user = users.find((item) => item.id === order.userId)!;
         const selectedMenu = menus.find((item) => item.id === order.menuId);
-        const rec = getRecommendations(user.id, room.cafeId);
+        const rec = recommendations[user.id] ?? { frequent: null, recent: null };
         const same = rec.frequent && rec.recent && rec.frequent.menuId === rec.recent.menuId && rec.frequent.temperature === rec.recent.temperature;
         const delegated = order.status === "SELECTED" && order.selectedBy && order.selectedBy !== order.userId;
         return <div key={order.userId} className="border-b border-stone-100 py-4 last:border-0"><div className="flex items-center gap-3"><span className="grid size-10 place-items-center rounded-full bg-stone-100 font-black text-stone-600">{user.name.slice(0, 1)}</span><div className="min-w-0 flex-1"><p className="font-bold">{user.name}</p><p className="mt-0.5 text-xs text-stone-500">{selectedMenu ? `${selectedMenu.name} ${order.temperature}` : order.status === "ABSENT" && order.markedBy ? `${order.markedBy}님이 표시` : ""}</p>{delegated && <p className="mt-0.5 text-[11px] text-stone-400">{users.find((item) => item.id === order.selectedBy)?.name}이 대신 선택</p>}</div><OrderStatusBadge status={order.status} /></div>
