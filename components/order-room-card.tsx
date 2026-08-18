@@ -9,7 +9,7 @@ export function OrderRoomCard({ room, teamCode }: { room: OrderRoom; teamCode: s
   const { currentUser, users, cafes } = useOrderRooms();
   const cafe = cafes.find((item) => item.id === room.cafeId);
   const maker = users.find((item) => item.id === room.createdBy);
-  const myResponse = room.orders.find((item) => item.userId === currentUser?.id);
+  const myResponse = room.orders.find((item) => item.teamMemberId === currentUser?.id);
   const complete = room.orders.filter((item) => item.status !== "PENDING").length;
   if (!cafe) return null;
 

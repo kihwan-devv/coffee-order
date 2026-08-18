@@ -16,7 +16,7 @@ type DetailState =
 
 export default function OrderPage({ params }: { params: Promise<{ teamCode: string; orderCode: string }> }) {
   const { teamCode, orderCode } = use(params);
-  const { currentUser, memberJoinPending, rooms, teams, cafes, menus, teamLoadStatus, error, activateTeam, getTeamMembers } = useOrderRooms();
+  const { currentUser, memberJoinPending, rooms, teams, cafes, menus, teamLoadStatus, error, activateTeam, syncCurrentMember, getTeamMembers } = useOrderRooms();
   const [detail, setDetail] = useState<DetailState>({ status: "idle", order: null, members: [], error: "" });
   const team = teams.find((item) => item.code === teamCode);
 
@@ -28,15 +28,19 @@ export default function OrderPage({ params }: { params: Promise<{ teamCode: stri
     setDetail({ status: "loading", order: null, members: [], error: "" });
     console.log("order detail cafes", cafes);
     console.log("order detail menus", menus);
-    void getOrderDetail(team.id, orderCode)
-      .then((value) => {
+    void syncCurrentMember(team.id)
+      .then(async (member) => {
+        if (!member) throw new Error("현재 팀원 세션을 확인할 수 없습니다.");
+        console.log("current member id", member.id);
+        const value = await getOrderDetail(team.id, orderCode);
+        console.log("response member ids", value.order.orders.map((response) => response.teamMemberId));
         if (active) setDetail({ status: "loaded", order: value.order, members: value.members, error: "" });
       })
       .catch((value) => {
         if (active) setDetail({ status: "error", order: null, members: [], error: value instanceof Error ? value.message : "주문 상세를 불러오지 못했습니다." });
       });
     return () => { active = false; };
-  }, [cafes, currentUser, memberJoinPending, menus, orderCode, rooms, team, teamLoadStatus]);
+  }, [cafes, currentUser, memberJoinPending, menus, orderCode, rooms, syncCurrentMember, team, teamLoadStatus]);
 
   if (teamLoadStatus === "idle" || teamLoadStatus === "authenticating") return <main className="p-8">익명 세션을 준비하는 중...</main>;
   if (teamLoadStatus === "loading-team" || teamLoadStatus === "joining") return <main className="p-8">팀과 주문 정보를 불러오는 중...</main>;
