@@ -20,11 +20,41 @@ function logRpcError(rpc: string, error: PostgrestError) {
   });
 }
 
-export async function createTeam(name: string, memberNames: string[], creatorName: string) {
-  const { data, error } = await createClient().rpc("create_team_with_members", { p_team_name: name, p_member_names: memberNames, p_current_member_name: creatorName });
+export async function createTeam(name: string, creatorName: string) {
+  const { data, error } = await createClient().rpc("create_team_with_members", { p_team_name: name, p_member_names: [creatorName], p_current_member_name: creatorName });
   if (error) { logRpcError("create_team_with_members", error); throw error; }
   const row = one(data);
   return { teamId: row.team_id ?? row.teamId, teamCode: row.team_code ?? row.teamCode, teamMemberId: row.team_member_id ?? row.teamMemberId };
+}
+
+export async function addTeamMemberAndJoin(teamCode: string, memberName: string) {
+  const { data, error } = await createClient().rpc("add_team_member_and_join", {
+    p_team_code: teamCode,
+    p_member_name: memberName,
+  });
+  if (error) {
+    logRpcError("add_team_member_and_join", error);
+    if (error.code === "23505" || error.message.includes("TEAM_MEMBER_NAME_EXISTS")) {
+      throw new Error("이미 같은 이름의 팀원이 있어요. 기존 이름을 선택해주세요.");
+    }
+    throw error;
+  }
+  const row = one(data);
+  return {
+    teamId: row.team_id ?? row.teamId,
+    teamMemberId: row.team_member_id ?? row.teamMemberId,
+  };
+}
+
+export async function addMemberToOpenOrders(teamMemberId: string) {
+  const { data, error } = await createClient().rpc("add_member_to_open_orders", {
+    p_team_member_id: teamMemberId,
+  });
+  if (error) {
+    logRpcError("add_member_to_open_orders", error);
+    throw error;
+  }
+  return typeof data === "number" ? data : 0;
 }
 
 export async function getTeamLanding(teamCode: string) {
