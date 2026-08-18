@@ -6,9 +6,10 @@ import { OrderStatusBadge } from "./order-status-badge";
 import { useOrderRooms } from "./order-room-provider";
 
 export function OrderRoomCard({ room, teamCode }: { room: OrderRoom; teamCode: string }) {
-  const { users, cafes } = useOrderRooms();
+  const { currentUser, users, cafes } = useOrderRooms();
   const cafe = cafes.find((item) => item.id === room.cafeId);
   const maker = users.find((item) => item.id === room.createdBy);
+  const myResponse = room.orders.find((item) => item.userId === currentUser?.id);
   const complete = room.orders.filter((item) => item.status !== "PENDING").length;
   if (!cafe) return null;
 
@@ -18,6 +19,7 @@ export function OrderRoomCard({ room, teamCode }: { room: OrderRoom; teamCode: s
       <div className="min-w-0 flex-1">
         <div className="flex justify-between gap-2"><h2 className="truncate font-extrabold">{room.name}</h2><OrderStatusBadge status={room.status} /></div>
         <p className="mt-1 text-sm text-stone-500">{cafe.name} · {maker?.name ?? "팀원"}님이 만듦</p>
+        {myResponse && <p className="mt-2 text-xs font-semibold text-stone-500">{myResponse.status === "PENDING" ? "아직 주문하지 않았어요" : myResponse.status === "SELECTED" ? "주문을 선택했어요" : myResponse.status === "SKIP" ? "이번 주문은 건너뛰었어요" : "휴가 / 부재 상태예요"}</p>}
         <div className="mt-4 flex items-center justify-end text-xs"><span className="text-stone-500">응답 <b className="text-emerald-700">{complete}</b> / {room.orders.length}</span></div>
         <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-stone-100"><div className="h-full rounded-full bg-emerald-500" style={{ width: `${complete / room.orders.length * 100}%` }} /></div>
       </div>

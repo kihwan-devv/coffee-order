@@ -1,9 +1,9 @@
 import { createClient } from "@/lib/supabase/client";
 import { order, type Row } from "./shared";
-import type { OrderStatus, Temperature } from "@/types";
+import type { OrderRoom, OrderStatus, Temperature } from "@/types";
 
 const query = "*, order_responses(*)";
-export async function listOrders(teamId: string) { const { data, error } = await createClient().from("orders").select(query).eq("team_id", teamId).order("created_at", { ascending: false }); if (error) throw error; return data.map(order); }
+export async function listOrders(teamId: string): Promise<OrderRoom[]> { const { data, error } = await createClient().from("orders").select(query).eq("team_id", teamId).order("created_at", { ascending: false }); if (error) throw error; return data.map(order); }
 export async function getOrder(teamId: string, orderCode: string) { const { data, error } = await createClient().from("orders").select(query).eq("team_id", teamId).eq("order_code", orderCode).single(); if (error) { console.error("get order error", { code: error.code, message: error.message, details: error.details, hint: error.hint }); throw error; } return order(data); }
 export async function createOrder(input: { teamId: string; title: string; cafeId: string; currentMemberId: string }) {
   const payload = { team_id: input.teamId, title: input.title, cafe_id: input.cafeId, created_by_member_id: input.currentMemberId, status: "OPEN" };

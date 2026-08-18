@@ -13,7 +13,7 @@ function Message({ title, description, retry }: { title: string; description: st
 
 export default function TeamPage({ params }: { params: Promise<{ teamCode: string }> }) {
   const { teamCode } = use(params);
-  const { currentUser, error, teamLoadStatus, rooms, teams, activateTeam, getTeamMembers } = useOrderRooms();
+  const { currentUser, memberJoinPending, error, teamLoadStatus, rooms, teams, activateTeam, getTeamMembers } = useOrderRooms();
   const team = teams.find((item) => item.code === teamCode);
   useEffect(() => { void activateTeam(teamCode); }, [activateTeam, teamCode]);
 
@@ -25,7 +25,7 @@ export default function TeamPage({ params }: { params: Promise<{ teamCode: strin
   if (!team) return <Message title="팀 데이터가 비어 있습니다" description="요청은 완료됐지만 팀 데이터가 반환되지 않았습니다. RPC 반환값을 확인해 주세요." retry={() => void activateTeam(teamCode)} />;
 
   const members = getTeamMembers(team.id);
-  if (!currentUser) return <UserSelector teamCode={teamCode} teamName={team.name} members={members} />;
+  if (!currentUser || memberJoinPending) return <UserSelector teamCode={teamCode} teamName={team.name} members={members} />;
   const newestFirst = (a: (typeof rooms)[number], b: (typeof rooms)[number]) => b.createdAt.localeCompare(a.createdAt);
   const openOrders = rooms.filter((item) => item.teamId === team.id && item.status === "OPEN").sort(newestFirst);
   const closedOrders = rooms.filter((item) => item.teamId === team.id && item.status === "CLOSED").sort(newestFirst);

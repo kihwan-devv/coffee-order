@@ -31,7 +31,7 @@ begin
   select t.id
     into v_team_id
     from public.teams as t
-   where upper(t.code) = upper(btrim(p_team_code))
+   where upper(t.team_code) = upper(btrim(p_team_code))
    limit 1;
 
   if v_team_id is null then
