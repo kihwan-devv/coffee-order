@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { getRecommendations } from "@/lib/data/preferences";
-import type { Menu, MenuRecommendation, OrderRoom, Temperature } from "@/types";
+import type { Menu, MenuRecommendation, OrderRoom, Temperature, User } from "@/types";
 import { useOrderRooms } from "./order-room-provider";
 import { OrderStatusBadge } from "./order-status-badge";
 
@@ -86,9 +86,10 @@ function Recommendation({ title, item, menus, merged, onPick }: { title: string;
   return <div className="rounded-2xl border border-amber-200 bg-white p-3"><p className="text-xs font-bold text-stone-500">{merged ? "평소에도 자주 먹고 최근에도 먹었어요" : title}</p><p className="mt-1 font-extrabold">{menuText(item, menus)}</p><button type="button" disabled={isSubmitting} onClick={() => void pick()} className="mt-2 text-sm font-bold text-amber-700 underline disabled:opacity-50">{isSubmitting ? "주문 중..." : "이걸로 주문"}</button>{submitError && <p className="mt-2 text-xs font-bold text-rose-600">{submitError}</p>}</div>;
 }
 
-export function RoomDetail({ room, teamCode }: { room: OrderRoom; teamCode: string }) {
+export function RoomDetail({ room, teamCode, members }: { room: OrderRoom; teamCode: string; members?: User[] }) {
   const router = useRouter();
-  const { currentUser, updateOrder, toggleRoom, deleteRoom, users, cafes, menus, addMenu } = useOrderRooms();
+  const { currentUser, updateOrder, toggleRoom, deleteRoom, users: providerUsers, cafes, menus, addMenu } = useOrderRooms();
+  const users = members ?? providerUsers;
   const [tab, setTab] = useState<"people" | "menu">("people");
   const [pickerFor, setPickerFor] = useState<string | null>(null);
   const [recommendations, setRecommendations] = useState<Record<string, { frequent: MenuRecommendation | null; recent: MenuRecommendation | null }>>({});
@@ -109,7 +110,8 @@ export function RoomDetail({ room, teamCode }: { room: OrderRoom; teamCode: stri
     void Promise.all(users.map(async (member) => [member.id, await getRecommendations(member.id, room.cafeId)] as const)).then((items) => { if (active) setRecommendations(Object.fromEntries(items)); });
     return () => { active = false; };
   }, [room.cafeId, users]);
-  if (!currentUser || !mine) return null;
+  if (!currentUser) return null;
+  if (!mine) return <main className="mx-auto min-h-screen max-w-xl p-5 pb-12"><Link href={`/team/${teamCode}`} className="text-sm font-bold text-stone-500">← 주문방 목록</Link><section className="mt-5 rounded-3xl bg-stone-800 p-5 text-white"><h1 className="text-2xl font-black">{room.name}</h1><p className="mt-2 text-sm text-stone-300">내 응답을 찾지 못했지만 전체 주문 현황은 표시합니다.</p></section><section className="mt-5"><h2 className="text-xl font-black">전체 주문 현황</h2><div className="mt-3 rounded-3xl border border-stone-200 bg-white px-4">{room.orders.map((response) => { const member = users.find((item) => item.id === response.userId); const selectedMenu = menus.find((item) => item.id === response.menuId); return <div key={response.userId} className="flex items-center justify-between border-b border-stone-100 py-4 last:border-0"><div><p className="font-bold">{member?.name ?? "알 수 없는 팀원"}</p><p className="mt-1 text-xs text-stone-500">{selectedMenu ? `${selectedMenu.name} ${response.temperature}` : response.status === "PENDING" ? "아직 주문하지 않았어요" : ""}</p></div><OrderStatusBadge status={response.status} /></div>; })}</div></section></main>;
   const mineRec = recommendations[currentUser.id] ?? { frequent: null, recent: null };
   const sameMine = mineRec.frequent && mineRec.recent && mineRec.frequent.menuId === mineRec.recent.menuId && mineRec.frequent.temperature === mineRec.recent.temperature;
   const addRoomMenu = (name: string, supportedTemperatures: Temperature[]) => addMenu(room.cafeId, name, supportedTemperatures);
