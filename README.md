@@ -1,4 +1,4 @@
-# Brew Board
+# allAtOnce
 
 Next.js 기반의 팀 커피 공동주문 프로토타입입니다. 현재는 Supabase나 실제 DB를 연결하지 않고 React local state, sessionStorage, localStorage로 동작합니다.
 

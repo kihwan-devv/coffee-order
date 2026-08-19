@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 
-const BUILD_VERSION_STORAGE_KEY = "brew-board:build-version";
+const BUILD_VERSION_STORAGE_KEY = "all-at-once:build-version";
 
 export function AppVersionGuard() {
   useEffect(() => {
