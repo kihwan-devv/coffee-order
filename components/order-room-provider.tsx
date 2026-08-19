@@ -4,7 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { ensureAnonymousSession } from "@/lib/data/auth";
 import { createCafe, createMenu, listCafesAndMenus } from "@/lib/data/cafes";
 import { closeOrder, createOrder, deleteOrder, listOrders, updateResponse } from "@/lib/data/orders";
-import { addMemberToOpenOrders, addTeamMember, createTeam as createTeamRpc, getTeamLanding, TeamNotFoundError } from "@/lib/data/teams";
+import { addMemberToOpenOrders, addMemberToOrder, addTeamMember, createTeam as createTeamRpc, getTeamLanding, TeamNotFoundError } from "@/lib/data/teams";
 import { clearTeamMemberId, loadTeamMemberId, saveTeamMemberId } from "@/lib/data/team-member-storage";
 import { createClient } from "@/lib/supabase/client";
 import type { Cafe, Menu, OrderRoom, OrderStatus, Team, TeamMember, Temperature } from "@/types";
@@ -25,9 +25,10 @@ type Context = {
   activateTeam: (code: string) => Promise<void>;
   selectUser: (id: string, code: string) => Promise<void>;
   addUser: (code: string, name: string) => Promise<{ id: string; hasOpenOrders: boolean }>;
-  finishAddingUser: (id: string, includeOpenOrders: boolean) => Promise<void>;
+  finishAddingUser: (id: string, includeOpenOrders: boolean, orderCode?: string) => Promise<void>;
+  joinOrder: (orderCode: string) => Promise<void>;
   clearUser: () => void;
-  createTeam: (name: string, creator: string) => Promise<string>;
+  createTeam: (name: string, members: string[]) => Promise<string>;
   getTeamMembers: (id: string) => TeamMember[];
   createRoom: (teamId: string, name: string, cafeId: string) => Promise<string>;
   deleteRoom: (id: string) => Promise<void>;
@@ -149,8 +150,11 @@ export function OrderRoomProvider({ children }: { children: React.ReactNode }) {
       const nextRooms = await refreshOrders(result.teamId);
       return { id: member.id, hasOpenOrders: nextRooms.some((room) => room.status === "OPEN") };
     },
-    finishAddingUser: async (id, includeOpenOrders) => {
-      if (includeOpenOrders) await addMemberToOpenOrders(id);
+    finishAddingUser: async (id, includeOpenOrders, orderCode) => {
+      if (includeOpenOrders) {
+        if (orderCode) await addMemberToOrder(orderCode, id);
+        else await addMemberToOpenOrders(id);
+      }
       const team = teams[0];
       if (!team) throw new Error("현재 팀을 찾을 수 없습니다.");
       const landing = await getTeamLanding(team.code);
@@ -164,16 +168,19 @@ export function OrderRoomProvider({ children }: { children: React.ReactNode }) {
       setMemberJoinPending(false);
       setTeamLoadStatus("ready");
     },
+    joinOrder: async (orderCode) => {
+      if (!currentUser) throw new Error("현재 팀 사용자를 확인할 수 없습니다.");
+      await addMemberToOrder(orderCode, currentUser.id);
+      await refreshOrders(currentUser.teamId);
+    },
     clearUser: () => {
       const teamCode = teams[0]?.code;
       if (teamCode) clearTeamMemberId(teamCode);
       setCurrentUser(null);
     },
-    createTeam: async (name, creator) => {
+    createTeam: async (name, members) => {
       await ensureAnonymousSession();
-      const result = await createTeamRpc(name, creator);
-      saveTeamMemberId(result.teamCode, result.teamMemberId);
-      await activateTeam(result.teamCode);
+      const result = await createTeamRpc(name, members);
       return result.teamCode;
     },
     getTeamMembers: () => users,

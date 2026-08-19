@@ -19,14 +19,14 @@ function logRpcError(rpc: string, error: PostgrestError) {
   });
 }
 
-export async function createTeam(name: string, memberName: string) {
+export async function createTeam(name: string, memberNames: string[]) {
   const { data, error } = await createClient().rpc("create_team", {
     p_team_name: name,
-    p_member_name: memberName,
+    p_member_names: memberNames,
   });
   if (error) { logRpcError("create_team", error); throw error; }
   const row = one(data);
-  return { teamId: row.team_id ?? row.teamId, teamCode: row.team_code ?? row.teamCode, teamMemberId: row.team_member_id ?? row.teamMemberId };
+  return { teamId: row.team_id ?? row.teamId, teamCode: row.team_code ?? row.teamCode };
 }
 
 export async function addTeamMember(teamCode: string, memberName: string) {
@@ -49,6 +49,15 @@ export async function addMemberToOpenOrders(teamMemberId: string) {
   const { data, error } = await createClient().rpc("add_member_to_open_orders", { p_team_member_id: teamMemberId });
   if (error) { logRpcError("add_member_to_open_orders", error); throw error; }
   return typeof data === "number" ? data : 0;
+}
+
+export async function addMemberToOrder(orderCode: string, teamMemberId: string) {
+  const { data, error } = await createClient().rpc("add_member_to_order", {
+    p_order_code: orderCode,
+    p_team_member_id: teamMemberId,
+  });
+  if (error) { logRpcError("add_member_to_order", error); throw error; }
+  return data;
 }
 
 export async function getTeamLanding(teamCode: string) {

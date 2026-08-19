@@ -41,7 +41,7 @@ export default function OrderPage({ params }: { params: Promise<{ teamCode: stri
   if (teamLoadStatus === "not-found") return <main className="p-8"><Link href="/">팀을 찾을 수 없습니다.</Link></main>;
   if (teamLoadStatus === "error") return <main className="p-8"><p>{error ?? "팀 정보를 불러오지 못했습니다."}</p><button type="button" onClick={() => void activateTeam(teamCode)} className="mt-4 font-bold underline">다시 시도</button></main>;
   if (!team) return <main className="p-8">팀 데이터를 확인할 수 없습니다.</main>;
-  if (!currentUser || memberJoinPending) return <UserSelector teamCode={teamCode} teamName={team.name} members={getTeamMembers(team.id)} />;
+  if (!currentUser || memberJoinPending) return <UserSelector teamCode={teamCode} teamName={team.name} members={getTeamMembers(team.id)} orderCode={orderCode} />;
   if (detail.status === "error") return <main className="p-8"><p>주문 상세를 불러오지 못했습니다.</p><p className="mt-2 text-sm text-rose-600">{detail.error}</p><Link href={`/team/${teamCode}`} className="mt-4 inline-block font-bold underline">주문 목록으로 돌아가기</Link></main>;
   if (detail.status !== "loaded") return <main className="p-8">주문 상세를 불러오는 중...</main>;
   if (detail.order.orders.length === 0) return <main className="p-8"><p>이 주문에 등록된 팀원 응답이 없습니다.</p><Link href={`/team/${teamCode}`} className="mt-4 inline-block font-bold underline">주문 목록으로 돌아가기</Link></main>;
