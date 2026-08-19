@@ -27,7 +27,11 @@ export function UserSelector({ teamCode, teamName, members, orderCode }: { teamC
     if (!name.trim()) return setError("이름을 입력해 주세요.");
     setSubmitting(true);
     setError("");
-    try { setNewMember(await addUser(teamCode, name.trim())); }
+    try {
+      const addedMember = await addUser(teamCode, name.trim());
+      setSelectedMemberId(addedMember.id);
+      setNewMember(addedMember);
+    }
     catch (value) { setError(value instanceof Error ? value.message : "팀원을 추가하지 못했습니다."); }
     finally { setSubmitting(false); }
   };
