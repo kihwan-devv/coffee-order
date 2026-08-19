@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- Supabase schema is supplied by the remote project. */
-import type { Cafe, Menu, OrderRoom, Team, User, UserOrder } from "@/types";
+import type { Cafe, Menu, OrderRoom, Team, TeamMember, UserOrder } from "@/types";
 
 export type Row = Record<string, any>;
 export const one = (value: any): Row => Array.isArray(value) ? (value[0] ?? {}) : (value ?? {});
-export const user = (row: Row): User => ({ id: row.id ?? row.team_member_id, name: row.name ?? row.member_name, createdAt: row.created_at ?? "" });
+export const teamMember = (row: Row): TeamMember => ({ id: row.id ?? row.team_member_id, teamId: row.team_id ?? "", name: row.name ?? row.member_name, isActive: row.is_active ?? true, createdAt: row.created_at ?? "" });
 export const team = (row: Row): Team => ({ id: row.id ?? row.team_id, code: row.code ?? row.team_code, name: row.name ?? row.team_name, createdBy: row.created_by_member_id ?? row.created_by ?? "", createdAt: row.created_at ?? "" });
 export const cafe = (row: Row): Cafe => ({ id: row.id, name: row.name, emoji: row.emoji ?? "☕", color: row.color ?? "bg-amber-100" });
 export const menu = (row: Row): Menu => ({ id: row.id, cafeId: row.cafe_id, name: row.name, supportedTemperatures: row.available_temperatures ?? row.supported_temperatures ?? [] });

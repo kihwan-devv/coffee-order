@@ -1,9 +1,8 @@
 export type RoomStatus = "OPEN" | "CLOSED";
 export type OrderStatus = "PENDING" | "SELECTED" | "SKIP" | "ABSENT";
 export type Temperature = "HOT" | "ICED";
-export interface User { id: string; name: string; createdAt: string; }
+export interface TeamMember { id: string; teamId: string; name: string; isActive: boolean; createdAt: string; }
 export interface Team { id: string; code: string; name: string; createdBy: string; createdAt: string; }
-export interface TeamMember { teamId: string; userId: string; isActive: boolean; createdAt: string; }
 export interface Cafe { id: string; name: string; emoji: string; color: string; }
 export interface Menu { id: string; cafeId: string; name: string; supportedTemperatures: Temperature[]; }
 export interface UserOrder { teamMemberId: string; status: OrderStatus; menuId: string | null; temperature: Temperature | null; selectedByMemberId: string | null; markedByMemberId: string | null; updatedAt: string; }

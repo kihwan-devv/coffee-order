@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { getRecommendations } from "@/lib/data/preferences";
-import type { Menu, MenuRecommendation, OrderRoom, Temperature, User } from "@/types";
+import type { Menu, MenuRecommendation, OrderRoom, TeamMember, Temperature } from "@/types";
 import { useOrderRooms } from "./order-room-provider";
 import { OrderStatusBadge } from "./order-status-badge";
 
@@ -86,7 +86,7 @@ function Recommendation({ title, item, menus, merged, onPick }: { title: string;
   return <div className="rounded-2xl border border-amber-200 bg-white p-3"><p className="text-xs font-bold text-stone-500">{merged ? "평소에도 자주 먹고 최근에도 먹었어요" : title}</p><p className="mt-1 font-extrabold">{menuText(item, menus)}</p><button type="button" disabled={isSubmitting} onClick={() => void pick()} className="mt-2 text-sm font-bold text-amber-700 underline disabled:opacity-50">{isSubmitting ? "주문 중..." : "이걸로 주문"}</button>{submitError && <p className="mt-2 text-xs font-bold text-rose-600">{submitError}</p>}</div>;
 }
 
-export function RoomDetail({ room, teamCode, members }: { room: OrderRoom; teamCode: string; members?: User[] }) {
+export function RoomDetail({ room, teamCode, members }: { room: OrderRoom; teamCode: string; members?: TeamMember[] }) {
   const router = useRouter();
   const { currentUser, updateOrder, toggleRoom, deleteRoom, users: providerUsers, cafes, menus, addMenu } = useOrderRooms();
   const users = members ?? providerUsers;

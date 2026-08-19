@@ -11,7 +11,6 @@ async function initializeSession(): Promise<Session> {
     throw error;
   }
   if (data.session?.access_token) {
-    console.log("Supabase session ready:", { source: "existing", userId: data.session.user.id, hasAccessToken: true });
     return data.session;
   }
 
@@ -25,7 +24,6 @@ async function initializeSession(): Promise<Session> {
     console.error("[Supabase auth.signInAnonymously]", missingSession);
     throw missingSession;
   }
-  console.log("Supabase session ready:", { source: "anonymous-sign-in", userId: result.data.session.user.id, hasAccessToken: true });
   return result.data.session;
 }
 
@@ -37,8 +35,4 @@ export function ensureAnonymousSession() {
     });
   }
   return sessionPromise;
-}
-
-export function resetSessionInitialization() {
-  sessionPromise = null;
 }

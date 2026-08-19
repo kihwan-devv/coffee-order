@@ -7,16 +7,16 @@ import { ShareOrderActions } from "@/components/share-order-actions";
 import { UserSelector } from "@/components/user-selector";
 import { useOrderRooms } from "@/components/order-room-provider";
 import { getOrderDetail } from "@/lib/data/orders";
-import type { OrderRoom, User } from "@/types";
+import type { OrderRoom, TeamMember } from "@/types";
 
 type DetailState =
-  | { status: "idle" | "loading"; order: null; members: User[]; error: "" }
-  | { status: "loaded"; order: OrderRoom; members: User[]; error: "" }
-  | { status: "error"; order: null; members: User[]; error: string };
+  | { status: "idle" | "loading"; order: null; members: TeamMember[]; error: "" }
+  | { status: "loaded"; order: OrderRoom; members: TeamMember[]; error: "" }
+  | { status: "error"; order: null; members: TeamMember[]; error: string };
 
 export default function OrderPage({ params }: { params: Promise<{ teamCode: string; orderCode: string }> }) {
   const { teamCode, orderCode } = use(params);
-  const { currentUser, memberJoinPending, rooms, teams, cafes, menus, teamLoadStatus, error, activateTeam, syncCurrentMember, getTeamMembers } = useOrderRooms();
+  const { currentUser, memberJoinPending, rooms, teams, teamLoadStatus, error, activateTeam, getTeamMembers } = useOrderRooms();
   const [detail, setDetail] = useState<DetailState>({ status: "idle", order: null, members: [], error: "" });
   const team = teams.find((item) => item.code === teamCode);
 
@@ -26,21 +26,15 @@ export default function OrderPage({ params }: { params: Promise<{ teamCode: stri
     if (teamLoadStatus !== "ready" || !team || !currentUser || memberJoinPending) return;
     let active = true;
     setDetail({ status: "loading", order: null, members: [], error: "" });
-    console.log("order detail cafes", cafes);
-    console.log("order detail menus", menus);
-    void syncCurrentMember(team.id)
-      .then(async (member) => {
-        if (!member) throw new Error("현재 팀원 세션을 확인할 수 없습니다.");
-        console.log("current member id", member.id);
-        const value = await getOrderDetail(team.id, orderCode);
-        console.log("response member ids", value.order.orders.map((response) => response.teamMemberId));
+    void getOrderDetail(team.id, orderCode)
+      .then((value) => {
         if (active) setDetail({ status: "loaded", order: value.order, members: value.members, error: "" });
       })
       .catch((value) => {
         if (active) setDetail({ status: "error", order: null, members: [], error: value instanceof Error ? value.message : "주문 상세를 불러오지 못했습니다." });
       });
     return () => { active = false; };
-  }, [cafes, currentUser, memberJoinPending, menus, orderCode, rooms, syncCurrentMember, team, teamLoadStatus]);
+  }, [currentUser, memberJoinPending, orderCode, rooms, team, teamLoadStatus]);
 
   if (teamLoadStatus === "idle" || teamLoadStatus === "authenticating") return <main className="p-8">익명 세션을 준비하는 중...</main>;
   if (teamLoadStatus === "loading-team" || teamLoadStatus === "joining") return <main className="p-8">팀과 주문 정보를 불러오는 중...</main>;

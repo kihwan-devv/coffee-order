@@ -1,10 +1,10 @@
 "use client";
 
 import { type FormEvent, useState } from "react";
-import type { User } from "@/types";
+import type { TeamMember } from "@/types";
 import { useOrderRooms } from "./order-room-provider";
 
-export function UserSelector({ teamCode, teamName, members }: { teamCode: string; teamName: string; members: User[] }) {
+export function UserSelector({ teamCode, teamName, members }: { teamCode: string; teamName: string; members: TeamMember[] }) {
   const { addUser, finishAddingUser, selectUser } = useOrderRooms();
   const [adding, setAdding] = useState(false);
   const [name, setName] = useState("");
