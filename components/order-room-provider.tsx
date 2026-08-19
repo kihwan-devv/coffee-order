@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { ensureAnonymousSession } from "@/lib/data/auth";
-import { createCafe, createMenu, listCafesAndMenus } from "@/lib/data/cafes";
+import { createCafe, createMenu, listCafesAndMenus, updateCafe, updateMenu, type CafeInput, type MenuInput } from "@/lib/data/cafes";
 import { closeOrder, createOrder, deleteOrder, listOrders, updateResponse } from "@/lib/data/orders";
 import { addMemberToOpenOrders, addMemberToOrder, addTeamMember, createTeam as createTeamRpc, getTeamLanding, TeamNotFoundError } from "@/lib/data/teams";
 import { clearTeamMemberId, loadTeamMemberId, saveTeamMemberId } from "@/lib/data/team-member-storage";
@@ -34,8 +34,10 @@ type Context = {
   deleteRoom: (id: string) => Promise<void>;
   updateOrder: (roomId: string, userId: string, status: OrderStatus, selection?: { menuId: string; temperature: Temperature }) => Promise<void>;
   toggleRoom: (id: string) => Promise<void>;
-  addCafe: (name: string, url?: string) => Promise<Cafe>;
-  addMenu: (cafeId: string, name: string, temperatures: Temperature[]) => Promise<Menu>;
+  addCafe: (input: CafeInput) => Promise<Cafe>;
+  editCafe: (id: string, input: CafeInput) => Promise<Cafe>;
+  addMenu: (cafeId: string, input: MenuInput) => Promise<Menu>;
+  editMenu: (id: string, input: MenuInput) => Promise<Menu>;
 };
 
 const OrderContext = createContext<Context | null>(null);
@@ -203,8 +205,10 @@ export function OrderRoomProvider({ children }: { children: React.ReactNode }) {
       if (teamId) await refreshOrders(teamId);
     },
     toggleRoom: async (id) => { try { await closeOrder(id); await reload(id); } catch (value) { fail(value); } },
-    addCafe: async (name, url) => { const item = await createCafe(name, url); setCafes((all) => [...all, item]); return item; },
-    addMenu: async (cafeId, name, temperatures) => { const item = await createMenu(cafeId, name, temperatures); setMenus((all) => [...all, item]); return item; },
+    addCafe: async (input) => { const item = await createCafe(input); const data = await listCafesAndMenus(); setCafes(data.cafes); setMenus(data.menus); return item; },
+    editCafe: async (id, input) => { const item = await updateCafe(id, input); setCafes((all) => all.map((value) => value.id === id ? item : value)); return item; },
+    addMenu: async (cafeId, input) => { const item = await createMenu(cafeId, input); setMenus((all) => [...all, item]); return item; },
+    editMenu: async (id, input) => { const item = await updateMenu(id, input); setMenus((all) => all.map((value) => value.id === id ? item : value)); return item; },
   }), [activateTeam, cafes, currentUser, error, fail, memberJoinPending, menus, ready, refreshOrders, reload, rooms, teamLoadStatus, teams, users]);
 
   return <OrderContext.Provider value={value}>{children}</OrderContext.Provider>;

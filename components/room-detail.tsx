@@ -16,7 +16,7 @@ function MenuPicker({ cafeId, menus, onSelect, onAddMenu }: {
   onSelect: (menu: Menu, temperature: Temperature) => Promise<void>;
   onAddMenu: (name: string, temperatures: Temperature[]) => void;
 }) {
-  const available = menus.filter((menu) => menu.cafeId === cafeId);
+  const available = menus.filter((menu) => menu.cafeId === cafeId && menu.isActive);
   const [menuId, setMenuId] = useState(available[0]?.id ?? "");
   const selectedMenu = available.find((item) => item.id === menuId) ?? available[0];
   const [temperature, setTemperature] = useState<Temperature>(selectedMenu?.supportedTemperatures[0] ?? "ICED");
@@ -39,7 +39,7 @@ function MenuPicker({ cafeId, menus, onSelect, onAddMenu }: {
   const addMenu = () => {
     const trimmed = name.trim();
     if (!trimmed || temperatures.length === 0) return;
-    onAddMenu(trimmed, temperatures);
+    void onAddMenu(trimmed, temperatures);
     setName("");
     setTemperatures(["ICED"]);
     setShowAdd(false);
@@ -47,14 +47,14 @@ function MenuPicker({ cafeId, menus, onSelect, onAddMenu }: {
 
   const importSelectedMenus = () => {
     selectedCandidates.forEach((candidate) => {
-      if (!available.some((menu) => menu.name === candidate)) onAddMenu(candidate, ["HOT", "ICED"]);
+      if (!available.some((menu) => menu.name === candidate)) void onAddMenu(candidate, ["HOT", "ICED"]);
     });
     setSelectedCandidates([]);
     setShowImport(false);
   };
   const submitOrder = async () => { if (!selectedMenu || isSubmitting) return; setIsSubmitting(true); setSubmitError(""); try { await onSelect(selectedMenu, temperature); } catch (value) { setSubmitError(value instanceof Error ? value.message : "주문하지 못했습니다."); } finally { setIsSubmitting(false); } };
 
-  if (!selectedMenu) return null;
+  if (!selectedMenu) return <div className="rounded-2xl border border-dashed border-stone-300 bg-white p-5 text-center"><p className="text-sm text-stone-500">등록된 메뉴가 없습니다.</p><button type="button" onClick={() => setShowAdd(true)} className="mt-3 min-h-11 rounded-xl bg-amber-600 px-4 text-sm font-bold text-white">+ 메뉴 추가</button>{showAdd && <div className="mt-3"><input autoFocus value={name} onChange={(event) => setName(event.target.value)} placeholder="메뉴 이름" className="w-full rounded-xl border px-3 py-2" /><button type="button" onClick={addMenu} className="mt-2 min-h-11 w-full rounded-xl bg-stone-800 text-sm font-bold text-white">메뉴 추가</button></div>}</div>;
 
   return <div className="rounded-2xl border border-stone-200 bg-white p-3">
     <div className="grid grid-cols-2 gap-2">
@@ -127,7 +127,7 @@ export function RoomDetail({ room, teamCode, members }: { room: OrderRoom; teamC
   if (!mine) return <MissingResponseView room={room} teamCode={teamCode} members={users} menus={menus} />;
   const mineRec = recommendations[currentUser.id] ?? { frequent: null, recent: null };
   const sameMine = mineRec.frequent && mineRec.recent && mineRec.frequent.menuId === mineRec.recent.menuId && mineRec.frequent.temperature === mineRec.recent.temperature;
-  const addRoomMenu = (name: string, supportedTemperatures: Temperature[]) => addMenu(room.cafeId, name, supportedTemperatures);
+  const addRoomMenu = (name: string, supportedTemperatures: Temperature[]) => addMenu(room.cafeId, { name, temperatures: supportedTemperatures });
   const choose = (userId: string, item: MenuRecommendation) => updateOrder(room.id, userId, "SELECTED", { menuId: item.menuId, temperature: item.temperature });
   const selectMine = async (menu: Menu, temperature: Temperature) => { await updateOrder(room.id, currentUser.id, "SELECTED", { menuId: menu.id, temperature }); setIsMineEditing(false); };
   const chooseMine = async (item: MenuRecommendation) => { await updateOrder(room.id, currentUser.id, "SELECTED", { menuId: item.menuId, temperature: item.temperature }); setIsMineEditing(false); };
