@@ -51,9 +51,9 @@ export async function addMemberToOpenOrders(teamMemberId: string) {
   return typeof data === "number" ? data : 0;
 }
 
-export async function addMemberToOrder(orderCode: string, teamMemberId: string) {
+export async function addMemberToOrder(orderId: string, teamMemberId: string) {
   const { data, error } = await createClient().rpc("add_member_to_order", {
-    p_order_code: orderCode,
+    p_order_id: orderId,
     p_team_member_id: teamMemberId,
   });
   if (error) { logRpcError("add_member_to_order", error); throw error; }

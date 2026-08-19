@@ -152,7 +152,11 @@ export function OrderRoomProvider({ children }: { children: React.ReactNode }) {
     },
     finishAddingUser: async (id, includeOpenOrders, orderCode) => {
       if (includeOpenOrders) {
-        if (orderCode) await addMemberToOrder(orderCode, id);
+        if (orderCode) {
+          const orderId = rooms.find((room) => room.orderCode === orderCode)?.id;
+          if (!orderId) throw new Error("현재 주문을 찾을 수 없습니다.");
+          await addMemberToOrder(orderId, id);
+        }
         else await addMemberToOpenOrders(id);
       }
       const team = teams[0];
@@ -170,7 +174,9 @@ export function OrderRoomProvider({ children }: { children: React.ReactNode }) {
     },
     joinOrder: async (orderCode) => {
       if (!currentUser) throw new Error("현재 팀 사용자를 확인할 수 없습니다.");
-      await addMemberToOrder(orderCode, currentUser.id);
+      const orderId = rooms.find((room) => room.orderCode === orderCode)?.id;
+      if (!orderId) throw new Error("현재 주문을 찾을 수 없습니다.");
+      await addMemberToOrder(orderId, currentUser.id);
       await refreshOrders(currentUser.teamId);
     },
     clearUser: () => {

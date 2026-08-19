@@ -189,8 +189,11 @@ begin
     raise exception using errcode = '22023', message = 'INVALID_TEAM_MEMBER';
   end if;
 
-  insert into public.order_responses (order_id, team_member_id, status)
-  select o.id, p_team_member_id, 'PENDING'
+  insert into public.order_responses (
+    order_id, team_id, team_member_id, status,
+    menu_id, temperature, selected_by_member_id, marked_by_member_id
+  )
+  select o.id, o.team_id, p_team_member_id, 'PENDING', null, null, null, null
     from public.orders as o
    where o.team_id = v_team_id
      and o.status = 'OPEN'
@@ -205,8 +208,10 @@ revoke all on function public.add_member_to_open_orders(uuid) from public, anon;
 grant execute on function public.add_member_to_open_orders(uuid) to authenticated;
 
 
+drop function if exists public.add_member_to_order(text, uuid);
+
 create or replace function public.add_member_to_order(
-  p_order_code text,
+  p_order_id uuid,
   p_team_member_id uuid
 )
 returns uuid
@@ -215,35 +220,45 @@ security definer
 set search_path = ''
 as $$
 declare
-  v_order_id uuid;
+  v_team_id uuid;
+  v_order_status text;
 begin
   if auth.uid() is null then
     raise exception using errcode = '42501', message = 'AUTH_REQUIRED';
   end if;
 
-  select o.id into v_order_id
+  select o.team_id, o.status::text
+    into v_team_id, v_order_status
     from public.orders as o
-    join public.team_members as tm
-      on tm.team_id = o.team_id
-     and tm.id = p_team_member_id
-     and tm.is_active = true
-   where o.order_code = p_order_code
-     and o.status = 'OPEN'
-   limit 1;
-  if v_order_id is null then
-    raise exception using errcode = '22023', message = 'OPEN_ORDER_OR_TEAM_MEMBER_NOT_FOUND';
+   where o.id = p_order_id;
+  if v_team_id is null then
+    raise exception using errcode = 'P0002', message = 'ORDER_NOT_FOUND';
+  end if;
+  if v_order_status <> 'OPEN' then
+    raise exception using errcode = '22023', message = 'ORDER_NOT_OPEN';
+  end if;
+  if not exists (
+    select 1 from public.team_members as tm
+     where tm.id = p_team_member_id
+       and tm.team_id = v_team_id
+       and tm.is_active = true
+  ) then
+    raise exception using errcode = '22023', message = 'TEAM_MEMBER_NOT_IN_ORDER_TEAM';
   end if;
 
-  insert into public.order_responses (order_id, team_member_id, status)
-  values (v_order_id, p_team_member_id, 'PENDING')
+  insert into public.order_responses (
+    order_id, team_id, team_member_id, status,
+    menu_id, temperature, selected_by_member_id, marked_by_member_id
+  )
+  values (p_order_id, v_team_id, p_team_member_id, 'PENDING', null, null, null, null)
   on conflict (order_id, team_member_id) do nothing;
 
-  return v_order_id;
+  return p_order_id;
 end;
 $$;
 
-revoke all on function public.add_member_to_order(text, uuid) from public, anon;
-grant execute on function public.add_member_to_order(text, uuid) to authenticated;
+revoke all on function public.add_member_to_order(uuid, uuid) from public, anon;
+grant execute on function public.add_member_to_order(uuid, uuid) to authenticated;
 
 -- Remove obsolete auth.uid() -> TeamMember functions after their policies and RPC callers are gone.
 drop function if exists public.join_team_as_member(text, uuid);
