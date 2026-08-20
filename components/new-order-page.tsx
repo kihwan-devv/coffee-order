@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronRight, Coffee, Plus, Settings } from "lucide-react";
 import { AppHeader } from "./app-header";
@@ -38,8 +38,7 @@ export function NewOrderPage({ teamCode }: { teamCode: string }) {
     finally { setIsAddingCafe(false); }
   };
 
-  const submit = async (event: FormEvent) => {
-    event.preventDefault();
+  const submit = async () => {
     if (!title.trim() || !cafeId || isCreating) return;
     setIsCreating(true);
     setCreateError("");
@@ -59,7 +58,7 @@ export function NewOrderPage({ teamCode }: { teamCode: string }) {
     <AppHeader teamCode={team.code} />
     <h1 className="text-3xl font-black tracking-tight">새 주문 만들기</h1>
     <p className="mt-2 text-sm text-stone-500">{team.name}의 활성 팀원이 모두 주문 대상에 포함돼요.</p>
-    <form onSubmit={submit} className="mt-5 space-y-4 sm:mt-7 sm:space-y-6">
+    <div className="mt-5 space-y-4 sm:mt-7 sm:space-y-6">
       <label className="block"><span className="mb-2 block text-sm font-bold">주문 제목</span><input autoFocus required value={title} onChange={(event) => setTitle(event.target.value)} placeholder="예: 오후 커피 주문" className="w-full rounded-2xl border border-stone-200 bg-white px-4 py-3.5 outline-none focus:ring-2 focus:ring-amber-300" /></label>
       <fieldset>
         <legend className="mb-2 text-sm font-bold">카페 선택</legend>
@@ -74,9 +73,9 @@ export function NewOrderPage({ teamCode }: { teamCode: string }) {
         </div>}
         {showManagement && <div className="mt-4"><h2 className="flex items-center gap-2 text-lg font-black"><Coffee size={20} />카페·메뉴 관리</h2>{cafes.map((cafe) => <CafeManager key={cafe.id} cafe={cafe} />)}</div>}
       </fieldset>
-      {cafeId && menus.filter((menu) => menu.cafeId === cafeId && menu.isActive).length === 0 && <section className="rounded-2xl border border-amber-200 bg-amber-50 p-4"><p className="font-bold">이 카페에는 아직 메뉴가 없습니다.</p><div className="mt-3 grid gap-2 sm:grid-cols-2"><button type="button" onClick={() => setShowManagement(true)} className="flex min-h-11 items-center justify-center gap-2 rounded-xl bg-amber-600 text-sm font-bold text-white"><Settings size={16} />메뉴 추가하기</button><button type="submit" className="flex min-h-11 items-center justify-center gap-2 rounded-xl bg-white text-sm font-bold text-stone-700">주문방은 먼저 만들기<ChevronRight size={16} /></button></div></section>}
+      {cafeId && menus.filter((menu) => menu.cafeId === cafeId && menu.isActive).length === 0 && <section className="rounded-2xl border border-amber-200 bg-amber-50 p-4"><p className="font-bold">이 카페에는 아직 메뉴가 없습니다.</p><div className="mt-3 grid gap-2 sm:grid-cols-2"><button type="button" onClick={() => setShowManagement(true)} className="flex min-h-11 items-center justify-center gap-2 rounded-xl bg-amber-600 text-sm font-bold text-white"><Settings size={16} />메뉴 추가하기</button><button type="button" onClick={() => void submit()} className="flex min-h-11 items-center justify-center gap-2 rounded-xl bg-white text-sm font-bold text-stone-700">주문방은 먼저 만들기<ChevronRight size={16} /></button></div></section>}
       {createError && <p className="rounded-xl bg-rose-50 p-3 text-sm text-rose-700">{createError}</p>}
-      <button disabled={isCreating} className="flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-amber-600 font-extrabold text-white transition hover:bg-amber-700 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"><Plus size={19} />{isCreating ? "주문 만드는 중..." : "새 주문"}</button>
-    </form>
+      <button type="button" disabled={isCreating} onClick={() => void submit()} className="flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-amber-600 font-extrabold text-white transition hover:bg-amber-700 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"><Plus size={19} />{isCreating ? "주문 만드는 중..." : "새 주문"}</button>
+    </div>
   </main>;
 }
