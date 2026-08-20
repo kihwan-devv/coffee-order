@@ -17,7 +17,7 @@ function TemperatureFields({ value, onChange }: { value: Temperature[]; onChange
   })}</div>;
 }
 
-function MenuEditor({ cafeId, menu, onClose }: { cafeId: string; menu?: Menu; onClose: () => void }) {
+export function MenuEditor({ cafeId, menu, onClose }: { cafeId: string; menu?: Menu; onClose: () => void }) {
   const { addMenu, editMenu } = useOrderRooms();
   const [draft, setDraft] = useState<MenuDraft>(() => menu ? menuDraft(menu) : emptyMenu());
   const [saving, setSaving] = useState(false);

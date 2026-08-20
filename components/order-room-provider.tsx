@@ -208,7 +208,7 @@ export function OrderRoomProvider({ children }: { children: React.ReactNode }) {
     addCafe: async (input) => { const item = await createCafe(input); const data = await listCafesAndMenus(); setCafes(data.cafes); setMenus(data.menus); return item; },
     editCafe: async (id, input) => { const item = await updateCafe(id, input); setCafes((all) => all.map((value) => value.id === id ? item : value)); return item; },
     addMenu: async (cafeId, input) => { const item = await createMenu(cafeId, input); setMenus((all) => [...all, item]); return item; },
-    editMenu: async (id, input) => { const item = await updateMenu(id, input); setMenus((all) => all.map((value) => value.id === id ? item : value)); return item; },
+    editMenu: async (id, input) => { await updateMenu(id, input); const data = await listCafesAndMenus(); setCafes(data.cafes); setMenus(data.menus); const item = data.menus.find((value: Menu) => value.id === id); if (!item) throw new Error("수정한 메뉴를 다시 불러오지 못했습니다."); return item; },
   }), [activateTeam, cafes, currentUser, error, fail, memberJoinPending, menus, ready, refreshOrders, reload, rooms, teamLoadStatus, teams, users]);
 
   return <OrderContext.Provider value={value}>{children}</OrderContext.Provider>;

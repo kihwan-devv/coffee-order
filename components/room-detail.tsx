@@ -9,6 +9,7 @@ import { primaryButtonClass, primaryPanelClass } from "@/lib/ui/styles";
 import type { Menu, MenuRecommendation, OrderRoom, TeamMember, Temperature } from "@/types";
 import { useOrderRooms } from "./order-room-provider";
 import { OrderStatusBadge } from "./order-status-badge";
+import { MenuEditor } from "./cafe-manager";
 
 const menuText = (item: MenuRecommendation, menus: Menu[]) => `${menus.find((menu) => menu.id === item.menuId)?.name ?? "메뉴"} ${item.temperature}`;
 
@@ -26,6 +27,7 @@ function MenuPicker({ cafeId, menus, onSelect, onAddMenu }: {
   const [name, setName] = useState("");
   const [temperatures, setTemperatures] = useState<Temperature[]>(["ICED"]);
   const [showImport, setShowImport] = useState(false);
+  const [editingMenuId, setEditingMenuId] = useState<string | null>(null);
   const [selectedCandidates, setSelectedCandidates] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
@@ -65,7 +67,7 @@ function MenuPicker({ cafeId, menus, onSelect, onAddMenu }: {
 
   return <div className="rounded-2xl border border-stone-200 bg-white p-3">
     <div className="space-y-2">
-      {available.map((item) => <div key={item.id} className={`overflow-hidden rounded-2xl border transition ${item.id === selectedMenu.id ? "border-amber-400 bg-amber-50" : "border-stone-200"}`}><button type="button" onClick={() => selectMenu(item.id)} className="flex min-h-11 w-full items-center justify-between px-3 text-left text-sm font-bold"><span>{item.name}</span>{item.id === selectedMenu.id && <Check size={16} className="text-amber-700" />}</button>{item.id === selectedMenu.id && <div className="border-t border-amber-200 p-3"><div className="flex gap-2">{item.supportedTemperatures.map((value) => { const selected = value === temperature; const Icon = value === "HOT" ? Flame : Snowflake; return <button type="button" key={value} onClick={() => setTemperature(value)} className={`flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl border text-xs font-bold transition active:scale-[0.98] ${selected ? "border-amber-500 bg-amber-600 text-white" : "border-stone-200 bg-white text-stone-600"}`}><Icon size={15} />{value}{selected && <Check size={14} />}</button>; })}</div><button type="button" disabled={!temperature || isSubmitting} onClick={() => void submitOrder()} className={`mt-3 w-full ${primaryButtonClass}`}>{isSubmitting ? "주문 중..." : "이걸로 주문"}</button></div>}</div>)}
+      {available.map((item) => <div key={item.id} className={`overflow-hidden rounded-2xl border transition ${item.id === selectedMenu.id ? "border-amber-400 bg-amber-50" : "border-stone-200"}`}><div className="flex items-center"><button type="button" onClick={() => selectMenu(item.id)} className="flex min-h-11 min-w-0 flex-1 items-center justify-between px-3 text-left text-sm font-bold"><span className="truncate">{item.name}</span>{item.id === selectedMenu.id && <Check size={16} className="shrink-0 text-amber-700" />}</button><button type="button" onClick={() => { selectMenu(item.id); setEditingMenuId(editingMenuId === item.id ? null : item.id); }} aria-label={`${item.name} 수정`} title="메뉴 수정" className="grid size-11 shrink-0 place-items-center border-l border-stone-200 text-stone-500 hover:bg-white"><Pencil size={15} /></button></div>{item.id === selectedMenu.id && <div className="border-t border-amber-200 p-3">{editingMenuId === item.id ? <MenuEditor cafeId={cafeId} menu={item} onClose={() => setEditingMenuId(null)} /> : <><div className="flex gap-2">{item.supportedTemperatures.map((value) => { const selected = value === temperature; const Icon = value === "HOT" ? Flame : Snowflake; return <button type="button" key={value} onClick={() => setTemperature(value)} className={`flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl border text-xs font-bold transition active:scale-[0.98] ${selected ? "border-amber-500 bg-amber-600 text-white" : "border-stone-200 bg-white text-stone-600"}`}><Icon size={15} />{value}{selected && <Check size={14} />}</button>; })}</div><button type="button" disabled={!temperature || isSubmitting} onClick={() => void submitOrder()} className={`mt-3 w-full ${primaryButtonClass}`}>{isSubmitting ? "주문 중..." : "이걸로 주문"}</button></>}</div>}</div>)}
       <button type="button" onClick={() => setShowAdd((value) => !value)} className="rounded-xl border border-dashed border-amber-400 bg-amber-50 px-2 py-2 text-sm font-bold text-amber-800">+ 메뉴 추가</button>
     </div>
     {showAdd && <div className="mt-3 rounded-xl bg-stone-50 p-3">
