@@ -38,6 +38,7 @@ type Context = {
   editCafe: (id: string, input: CafeInput) => Promise<Cafe>;
   addMenu: (cafeId: string, input: MenuInput) => Promise<Menu>;
   editMenu: (id: string, input: MenuInput) => Promise<Menu>;
+  saveCafeMenus: (cafeId: string, items: Array<MenuInput & { id?: string }>, deletedIds: string[]) => Promise<void>;
 };
 
 const OrderContext = createContext<Context | null>(null);
@@ -209,6 +210,7 @@ export function OrderRoomProvider({ children }: { children: React.ReactNode }) {
     editCafe: async (id, input) => { const item = await updateCafe(id, input); setCafes((all) => all.map((value) => value.id === id ? item : value)); return item; },
     addMenu: async (cafeId, input) => { const item = await createMenu(cafeId, input); setMenus((all) => [...all, item]); return item; },
     editMenu: async (id, input) => { await updateMenu(id, input); const data = await listCafesAndMenus(); setCafes(data.cafes); setMenus(data.menus); const item = data.menus.find((value: Menu) => value.id === id); if (!item) throw new Error("수정한 메뉴를 다시 불러오지 못했습니다."); return item; },
+    saveCafeMenus: async (cafeId, items, deletedIds) => { await Promise.all([...items.map((item) => item.id ? updateMenu(item.id, item) : createMenu(cafeId, item)), ...deletedIds.map((id) => { const existing = menus.find((item) => item.id === id); if (!existing) return Promise.resolve(null); return updateMenu(id, { name: existing.name, category: existing.category ?? "", imageUrl: existing.imageUrl ?? "", temperatures: existing.supportedTemperatures, isActive: false }); })]); const data = await listCafesAndMenus(); setCafes(data.cafes); setMenus(data.menus); },
   }), [activateTeam, cafes, currentUser, error, fail, memberJoinPending, menus, ready, refreshOrders, reload, rooms, teamLoadStatus, teams, users]);
 
   return <OrderContext.Provider value={value}>{children}</OrderContext.Provider>;
