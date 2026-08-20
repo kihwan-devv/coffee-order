@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { use, useEffect, useState } from "react";
-import { RoomDetail } from "@/components/room-detail";
+import { OrderUserSwitcher, RoomDetail } from "@/components/room-detail";
 import { ShareOrderActions } from "@/components/share-order-actions";
 import { UserSelector } from "@/components/user-selector";
 import { useOrderRooms } from "@/components/order-room-provider";
@@ -46,5 +46,5 @@ export default function OrderPage({ params }: { params: Promise<{ teamCode: stri
   if (detail.status !== "loaded") return <main className="p-8">주문 상세를 불러오는 중...</main>;
   if (detail.order.orders.length === 0) return <main className="p-8"><p>이 주문에 등록된 팀원 응답이 없습니다.</p><Link href={`/team/${teamCode}`} className="mt-4 inline-block font-bold underline">주문 목록으로 돌아가기</Link></main>;
 
-  return <><div className="mx-auto max-w-xl px-5 pt-4"><ShareOrderActions title={`${detail.order.name} 주문에 참여하세요 ☕`} path={`/team/${teamCode}/order/${orderCode}`} /></div><RoomDetail room={detail.order} teamCode={teamCode} members={detail.members} /></>;
+  return <><header className="mx-auto flex max-w-xl items-center justify-between gap-3 px-5 pt-4"><p className="shrink-0 text-sm font-black text-stone-700">주문방</p><div className="flex items-center gap-1.5"><ShareOrderActions compact title={`${detail.order.name} 주문에 참여하세요 ☕`} path={`/team/${teamCode}/order/${orderCode}`} /><OrderUserSwitcher teamCode={teamCode} members={detail.members} /></div></header><RoomDetail room={detail.order} teamCode={teamCode} members={detail.members} /></>;
 }
