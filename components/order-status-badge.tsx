@@ -1,4 +1,4 @@
 import type { OrderStatus, RoomStatus } from "@/types";
 const labels: Record<OrderStatus | RoomStatus, string> = { OPEN: "OPEN", CLOSED: "CLOSED", PENDING: "미응답", SELECTED: "주문 완료", SKIP: "오늘 안 마심", ABSENT: "휴가 / 부재" };
 const colors: Record<OrderStatus | RoomStatus, string> = { OPEN: "bg-emerald-100 text-emerald-700", CLOSED: "bg-stone-200 text-stone-600", PENDING: "bg-amber-100 text-amber-800", SELECTED: "bg-emerald-100 text-emerald-700", SKIP: "bg-stone-100 text-stone-600", ABSENT: "bg-violet-100 text-violet-700" };
-export function OrderStatusBadge({ status }: { status: OrderStatus | RoomStatus }) { return <span className={`rounded-full px-2.5 py-1 text-[11px] font-extrabold ${colors[status]}`}>{labels[status]}</span>; }
+export function OrderStatusBadge({ status }: { status: OrderStatus | RoomStatus }) { return <span className={`inline-flex min-h-6 items-center justify-center rounded-full px-2.5 py-1 text-center text-[11px] font-extrabold leading-none ${colors[status]}`}>{labels[status]}</span>; }
