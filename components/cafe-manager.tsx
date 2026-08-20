@@ -1,7 +1,7 @@
 "use client";
 
 import { type FormEvent, useState } from "react";
-import { Check, Coffee, Eye, EyeOff, Pencil, Plus, Snowflake, Trash2, X } from "lucide-react";
+import { Check, Coffee, Pencil, Plus, Snowflake, Trash2, X } from "lucide-react";
 import type { Cafe, Menu, Temperature } from "@/types";
 import { useOrderRooms } from "./order-room-provider";
 
@@ -66,7 +66,7 @@ function MenuBatchEditor({ cafeId, menus, onClose }: { cafeId: string; menus: Me
 }
 
 export function CafeManager({ cafe }: { cafe: Cafe }) {
-  const { menus, editCafe, editMenu } = useOrderRooms();
+  const { menus, editCafe } = useOrderRooms();
   const cafeMenus = menus.filter((item) => item.cafeId === cafe.id && item.isActive).sort((a, b) => a.sortOrder - b.sortOrder);
   const [editingCafe, setEditingCafe] = useState(false);
   const [editingMenuId, setEditingMenuId] = useState<string | null>(null);
@@ -76,14 +76,13 @@ export function CafeManager({ cafe }: { cafe: Cafe }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const saveCafe = async (event: FormEvent) => { event.preventDefault(); if (!cafeDraft.name.trim()) return; setSaving(true); setError(""); try { await editCafe(cafe.id, cafeDraft); setEditingCafe(false); } catch (value) { setError(value instanceof Error ? value.message : "카페를 저장하지 못했습니다."); } finally { setSaving(false); } };
-  const toggleMenu = async (menu: Menu) => { await editMenu(menu.id, { ...menuDraft(menu), isActive: !menu.isActive }); };
 
   return <section className="mt-3 rounded-3xl border border-stone-200 bg-white p-4">
     <div className="flex items-center justify-between gap-3"><div><h3 className="font-black">{cafe.name}</h3><p className="mt-1 text-xs text-stone-500">메뉴 {cafeMenus.length}개 · {cafe.isActive ? "사용 중" : "숨김"}</p></div><button type="button" onClick={() => setEditingCafe((value) => !value)} aria-label="카페 수정" title="카페 수정" className="grid size-11 place-items-center rounded-full border border-stone-200 transition hover:bg-stone-50 active:scale-95"><Pencil size={17} /></button></div>
     {!batchEditing && <button type="button" onClick={() => setBatchEditing(true)} className="mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-stone-100 text-sm font-bold text-stone-700"><Pencil size={16} />여러 메뉴 추가·수정·삭제</button>}
     {batchEditing && <MenuBatchEditor cafeId={cafe.id} menus={cafeMenus} onClose={() => setBatchEditing(false)} />}
     {editingCafe && <form onSubmit={saveCafe} className="mt-4 space-y-2 rounded-2xl bg-stone-50 p-3"><input required value={cafeDraft.name} onChange={(event) => setCafeDraft({ ...cafeDraft, name: event.target.value })} placeholder="카페 이름" className="w-full rounded-xl border px-3 py-3" /><input type="url" value={cafeDraft.logoUrl} onChange={(event) => setCafeDraft({ ...cafeDraft, logoUrl: event.target.value })} placeholder="로고 URL" className="w-full rounded-xl border px-3 py-3" /><input type="url" value={cafeDraft.imageUrl} onChange={(event) => setCafeDraft({ ...cafeDraft, imageUrl: event.target.value })} placeholder="이미지 URL" className="w-full rounded-xl border px-3 py-3" /><input type="url" value={cafeDraft.officialMenuUrl} onChange={(event) => setCafeDraft({ ...cafeDraft, officialMenuUrl: event.target.value })} placeholder="공식 메뉴 URL" className="w-full rounded-xl border px-3 py-3" /><label className="flex min-h-11 items-center gap-2 text-sm font-bold"><input type="checkbox" checked={cafeDraft.isActive} onChange={(event) => setCafeDraft({ ...cafeDraft, isActive: event.target.checked })} /> 활성 카페</label>{error && <p className="text-sm text-rose-600">{error}</p>}<button disabled={saving} className="min-h-11 w-full rounded-xl bg-stone-800 font-bold text-white disabled:opacity-50">{saving ? "저장 중..." : "카페 저장"}</button></form>}
-    <div className="mt-4 space-y-2">{cafeMenus.length ? cafeMenus.map((menu) => <div key={menu.id}><div className={`flex items-center gap-3 rounded-2xl border p-3 ${menu.isActive ? "border-stone-200" : "border-stone-100 bg-stone-50 opacity-70"}`}><div className="min-w-0 flex-1"><p className="font-bold">{menu.name}</p><p className="mt-1 text-xs text-stone-500">{menu.category || "카테고리 없음"} · {menu.supportedTemperatures.join(" / ")}</p></div><button type="button" onClick={() => setEditingMenuId(editingMenuId === menu.id ? null : menu.id)} aria-label={`${menu.name} 수정`} title="메뉴 수정" className="grid size-11 place-items-center rounded-full hover:bg-stone-100 active:scale-95"><Pencil size={16} /></button><button type="button" onClick={() => void toggleMenu(menu)} aria-label={`${menu.name} ${menu.isActive ? "숨기기" : "판매 재개"}`} title={menu.isActive ? "메뉴 숨기기" : "판매 재개"} className="grid size-11 place-items-center rounded-full hover:bg-stone-100 active:scale-95">{menu.isActive ? <EyeOff size={17} /> : <Eye size={17} />}</button></div>{editingMenuId === menu.id && <MenuEditor cafeId={cafe.id} menu={menu} onClose={() => setEditingMenuId(null)} />}</div>) : <div className="rounded-2xl border border-dashed border-stone-300 p-5 text-center"><p className="text-sm text-stone-500">등록된 메뉴가 없습니다.</p></div>}</div>
+    <div className="mt-4 space-y-2">{cafeMenus.length ? cafeMenus.map((menu) => <div key={menu.id}><div className="flex items-center gap-3 rounded-2xl border border-stone-200 p-3"><div className="min-w-0 flex-1"><p className="font-bold">{menu.name}</p><p className="mt-1 text-xs text-stone-500">{menu.category || "카테고리 없음"} · {menu.supportedTemperatures.join(" / ")}</p></div><button type="button" onClick={() => setEditingMenuId(editingMenuId === menu.id ? null : menu.id)} aria-label={`${menu.name} 수정`} title="메뉴 수정" className="grid size-11 place-items-center rounded-full hover:bg-stone-100 active:scale-95"><Pencil size={16} /></button></div>{editingMenuId === menu.id && <MenuEditor cafeId={cafe.id} menu={menu} onClose={() => setEditingMenuId(null)} />}</div>) : <div className="rounded-2xl border border-dashed border-stone-300 p-5 text-center"><p className="text-sm text-stone-500">등록된 메뉴가 없습니다.</p></div>}</div>
     {addingMenu ? <MenuEditor cafeId={cafe.id} onClose={() => setAddingMenu(false)} /> : <button type="button" onClick={() => setAddingMenu(true)} className="mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-dashed border-amber-400 bg-amber-50 text-sm font-bold text-amber-800 transition hover:bg-amber-100 active:scale-[0.98]"><Plus size={17} />메뉴 추가</button>}
   </section>;
 }
