@@ -55,11 +55,11 @@ export function NewOrderPage({ teamCode }: { teamCode: string }) {
     }
   };
 
-  return <main className="mx-auto min-h-screen max-w-xl p-5">
+  return <main className="mx-auto min-h-screen max-w-xl p-4 sm:p-5">
     <AppHeader teamCode={team.code} />
     <h1 className="text-3xl font-black tracking-tight">새 주문 만들기</h1>
     <p className="mt-2 text-sm text-stone-500">{team.name}의 활성 팀원이 모두 주문 대상에 포함돼요.</p>
-    <form onSubmit={submit} className="mt-7 space-y-6">
+    <form onSubmit={submit} className="mt-5 space-y-4 sm:mt-7 sm:space-y-6">
       <label className="block"><span className="mb-2 block text-sm font-bold">주문 제목</span><input autoFocus required value={title} onChange={(event) => setTitle(event.target.value)} placeholder="예: 오후 커피 주문" className="w-full rounded-2xl border border-stone-200 bg-white px-4 py-3.5 outline-none focus:ring-2 focus:ring-amber-300" /></label>
       <fieldset>
         <legend className="mb-2 text-sm font-bold">카페 선택</legend>

@@ -157,13 +157,13 @@ export function RoomDetail({ room, teamCode, members }: { room: OrderRoom; teamC
     return result;
   }, {});
 
-  return <main className="mx-auto min-h-screen max-w-xl p-5 pb-12">
+  return <main className="mx-auto min-h-screen max-w-xl p-4 pb-8 sm:p-5 sm:pb-12">
     <Link href={`/team/${teamCode}`} className="text-sm font-bold text-stone-500">← 주문방 목록</Link>
-    <section className={`mt-3 rounded-3xl p-5 ${primaryPanelClass}`}>
+    <section className={`mt-2 rounded-3xl p-4 sm:mt-3 sm:p-5 ${primaryPanelClass}`}>
       <div className="flex items-start justify-between gap-3"><div><p className="text-sm font-bold text-amber-700">{cafe.emoji} {cafe.name}</p><h1 className="mt-1 text-2xl font-black">{room.name}</h1><p className="mt-2 text-xs text-stone-600">{creator?.name ?? "팀원"}님이 만들었어요</p></div><OrderStatusBadge status={room.status} /></div>
     </section>
 
-    <section className="mt-4">
+    <section className="mt-3 sm:mt-4">
       <div className="flex items-end justify-between"><div><h2 className="text-xl font-black">전체 주문 현황</h2><p className="mt-1 text-sm text-stone-500">응답 완료 {complete}명 · 미응답 {room.orders.length - complete}명</p></div></div>
       <div className="mt-3 h-2 overflow-hidden rounded-full bg-stone-200"><div className="h-full bg-emerald-500" style={{ width: `${complete / room.orders.length * 100}%` }} /></div>
       {isOpen && room.createdBy === currentUser.id && <button type="button" onClick={() => toggleRoom(room.id)} className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 py-4 text-sm font-extrabold text-white shadow-lg shadow-emerald-200 transition hover:brightness-105 active:scale-[0.99]"><span className="grid size-6 place-items-center rounded-full bg-white/20">✓</span> 주문 완료하고 마감하기</button>}
