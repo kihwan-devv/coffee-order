@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { Check, Circle, Flame, Pencil, Snowflake, UserRound, X } from "lucide-react";
 import { getRecommendations } from "@/lib/data/preferences";
+import { primaryButtonClass, primaryPanelClass } from "@/lib/ui/styles";
 import type { Menu, MenuRecommendation, OrderRoom, TeamMember, Temperature } from "@/types";
 import { useOrderRooms } from "./order-room-provider";
 import { OrderStatusBadge } from "./order-status-badge";
@@ -19,7 +21,7 @@ function MenuPicker({ cafeId, menus, onSelect, onAddMenu }: {
   const available = menus.filter((menu) => menu.cafeId === cafeId && menu.isActive);
   const [menuId, setMenuId] = useState(available[0]?.id ?? "");
   const selectedMenu = available.find((item) => item.id === menuId) ?? available[0];
-  const [temperature, setTemperature] = useState<Temperature>(selectedMenu?.supportedTemperatures[0] ?? "ICED");
+  const [temperature, setTemperature] = useState<Temperature | null>(selectedMenu?.supportedTemperatures.length === 1 ? selectedMenu.supportedTemperatures[0] : null);
   const [showAdd, setShowAdd] = useState(false);
   const [name, setName] = useState("");
   const [temperatures, setTemperatures] = useState<Temperature[]>(["ICED"]);
@@ -28,12 +30,17 @@ function MenuPicker({ cafeId, menus, onSelect, onAddMenu }: {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const officialCandidates = ["아메리카노", "카페라떼", "바닐라라떼", "콜드브루", "자몽 허니 블랙 티"];
+  useEffect(() => {
+    if (!selectedMenu) return;
+    setMenuId(selectedMenu.id);
+    setTemperature(selectedMenu.supportedTemperatures.length === 1 ? selectedMenu.supportedTemperatures[0] : null);
+  }, [selectedMenu]);
 
   const selectMenu = (id: string) => {
     const menu = available.find((item) => item.id === id);
     if (!menu) return;
     setMenuId(id);
-    setTemperature(menu.supportedTemperatures[0]);
+    setTemperature(menu.supportedTemperatures.length === 1 ? menu.supportedTemperatures[0] : null);
   };
 
   const addMenu = () => {
@@ -52,13 +59,13 @@ function MenuPicker({ cafeId, menus, onSelect, onAddMenu }: {
     setSelectedCandidates([]);
     setShowImport(false);
   };
-  const submitOrder = async () => { if (!selectedMenu || isSubmitting) return; setIsSubmitting(true); setSubmitError(""); try { await onSelect(selectedMenu, temperature); } catch (value) { setSubmitError(value instanceof Error ? value.message : "주문하지 못했습니다."); } finally { setIsSubmitting(false); } };
+  const submitOrder = async () => { if (!selectedMenu || !temperature || isSubmitting) return; setIsSubmitting(true); setSubmitError(""); try { await onSelect(selectedMenu, temperature); } catch (value) { setSubmitError(value instanceof Error ? value.message : "주문하지 못했습니다."); } finally { setIsSubmitting(false); } };
 
   if (!selectedMenu) return <div className="rounded-2xl border border-dashed border-stone-300 bg-white p-5 text-center"><p className="text-sm text-stone-500">등록된 메뉴가 없습니다.</p><button type="button" onClick={() => setShowAdd(true)} className="mt-3 min-h-11 rounded-xl bg-amber-600 px-4 text-sm font-bold text-white">+ 메뉴 추가</button>{showAdd && <div className="mt-3"><input autoFocus value={name} onChange={(event) => setName(event.target.value)} placeholder="메뉴 이름" className="w-full rounded-xl border px-3 py-2" /><button type="button" onClick={addMenu} className="mt-2 min-h-11 w-full rounded-xl bg-stone-800 text-sm font-bold text-white">메뉴 추가</button></div>}</div>;
 
   return <div className="rounded-2xl border border-stone-200 bg-white p-3">
-    <div className="grid grid-cols-2 gap-2">
-      {available.map((item) => <button type="button" key={item.id} onClick={() => selectMenu(item.id)} className={`rounded-xl border px-2 py-2 text-sm font-bold ${item.id === selectedMenu.id ? "border-amber-500 bg-amber-50" : "border-stone-200"}`}>{item.name}</button>)}
+    <div className="space-y-2">
+      {available.map((item) => <div key={item.id} className={`overflow-hidden rounded-2xl border transition ${item.id === selectedMenu.id ? "border-amber-400 bg-amber-50" : "border-stone-200"}`}><button type="button" onClick={() => selectMenu(item.id)} className="flex min-h-11 w-full items-center justify-between px-3 text-left text-sm font-bold"><span>{item.name}</span>{item.id === selectedMenu.id && <Check size={16} className="text-amber-700" />}</button>{item.id === selectedMenu.id && <div className="border-t border-amber-200 p-3"><div className="flex gap-2">{item.supportedTemperatures.map((value) => { const selected = value === temperature; const Icon = value === "HOT" ? Flame : Snowflake; return <button type="button" key={value} onClick={() => setTemperature(value)} className={`flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl border text-xs font-bold transition active:scale-[0.98] ${selected ? "border-amber-500 bg-amber-600 text-white" : "border-stone-200 bg-white text-stone-600"}`}><Icon size={15} />{value}{selected && <Check size={14} />}</button>; })}</div><button type="button" disabled={!temperature || isSubmitting} onClick={() => void submitOrder()} className={`mt-3 w-full ${primaryButtonClass}`}>{isSubmitting ? "주문 중..." : "이걸로 주문"}</button></div>}</div>)}
       <button type="button" onClick={() => setShowAdd((value) => !value)} className="rounded-xl border border-dashed border-amber-400 bg-amber-50 px-2 py-2 text-sm font-bold text-amber-800">+ 메뉴 추가</button>
     </div>
     {showAdd && <div className="mt-3 rounded-xl bg-stone-50 p-3">
@@ -73,8 +80,6 @@ function MenuPicker({ cafeId, menus, onSelect, onAddMenu }: {
     </div>}
     <button type="button" onClick={() => setShowImport((value) => !value)} className="mt-3 text-xs font-bold text-stone-500 underline">공식 메뉴에서 가져오기 (프로토타입)</button>
     {showImport && <div className="mt-2 rounded-xl border border-sky-200 bg-sky-50 p-3"><p className="text-xs font-bold text-sky-900">공식 홈페이지 메뉴 후보</p><p className="mt-1 text-[11px] text-stone-500">현재는 선택 흐름을 검증하는 mock 목록입니다.</p><div className="mt-2 grid grid-cols-2 gap-2">{officialCandidates.map((candidate) => <label key={candidate} className="flex items-center gap-1 rounded-lg bg-white px-2 py-2 text-xs font-medium"><input type="checkbox" checked={selectedCandidates.includes(candidate)} onChange={() => setSelectedCandidates((previous) => previous.includes(candidate) ? previous.filter((item) => item !== candidate) : [...previous, candidate])} /> {candidate}</label>)}</div><button type="button" onClick={importSelectedMenus} disabled={selectedCandidates.length === 0} className="mt-3 rounded-lg bg-sky-700 px-3 py-2 text-xs font-bold text-white disabled:opacity-40">선택한 메뉴 추가</button></div>}
-    <div className="mt-3 flex gap-2">{selectedMenu.supportedTemperatures.map((item) => <button type="button" key={item} onClick={() => setTemperature(item)} className={`rounded-full px-3 py-1 text-xs font-bold ${item === temperature ? "bg-stone-800 text-white" : "bg-stone-100 text-stone-600"}`}>{item}</button>)}</div>
-    <button type="button" disabled={isSubmitting} onClick={() => void submitOrder()} className="mt-3 w-full rounded-xl bg-stone-800 py-2.5 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-60">{isSubmitting ? "주문 중..." : "이걸로 주문"}</button>
     {submitError && <p className="mt-2 text-xs font-bold text-rose-600">{submitError}</p>}
   </div>;
 }
@@ -84,6 +89,19 @@ function Recommendation({ title, item, menus, merged, onPick }: { title: string;
   const [submitError, setSubmitError] = useState("");
   const pick = async () => { if (isSubmitting) return; setIsSubmitting(true); setSubmitError(""); try { await onPick(); } catch (value) { setSubmitError(value instanceof Error ? value.message : "주문하지 못했습니다."); } finally { setIsSubmitting(false); } };
   return <div className="rounded-2xl border border-amber-200 bg-white p-3"><p className="text-xs font-bold text-stone-500">{merged ? "평소에도 자주 먹고 최근에도 먹었어요" : title}</p><p className="mt-1 font-extrabold">{menuText(item, menus)}</p><button type="button" disabled={isSubmitting} onClick={() => void pick()} className="mt-2 text-sm font-bold text-amber-700 underline disabled:opacity-50">{isSubmitting ? "주문 중..." : "이걸로 주문"}</button>{submitError && <p className="mt-2 text-xs font-bold text-rose-600">{submitError}</p>}</div>;
+}
+
+function OrderUserSwitcher({ teamCode, members }: { teamCode: string; members: TeamMember[] }) {
+  const { currentUser, selectUser } = useOrderRooms();
+  const [open, setOpen] = useState(false);
+  const [selectedId, setSelectedId] = useState(currentUser?.id ?? "");
+  const [changing, setChanging] = useState(false);
+  const [error, setError] = useState("");
+  useEffect(() => { setSelectedId(currentUser?.id ?? ""); }, [currentUser?.id]);
+  if (!currentUser) return null;
+  const selected = members.find((member) => member.id === selectedId);
+  const change = async () => { if (!selected || changing) return; setChanging(true); setError(""); try { await selectUser(selected.id, teamCode); setOpen(false); } catch (value) { setError(value instanceof Error ? value.message : "사용자를 변경하지 못했습니다."); } finally { setChanging(false); } };
+  return <section className="mb-4 rounded-2xl border border-stone-200 bg-white p-3"><div className="flex min-h-11 items-center justify-between gap-3"><p className="text-sm"><strong>{currentUser.name}</strong>으로 사용 중</p><button type="button" onClick={() => setOpen((value) => !value)} className="flex min-h-11 items-center gap-2 rounded-xl bg-stone-100 px-3 text-xs font-bold text-stone-700 transition hover:bg-stone-200 active:scale-95"><UserRound size={16} />사용자 변경</button></div>{open && <div className="mt-3 border-t border-stone-100 pt-3"><p className="font-black">누구신가요?</p><div className="mt-3 grid grid-cols-2 gap-2">{members.filter((member) => member.isActive).map((member) => { const checked = member.id === selectedId; return <button key={member.id} type="button" onClick={() => setSelectedId(member.id)} className={`flex min-h-11 items-center gap-2 rounded-xl border px-3 text-sm font-bold ${checked ? "border-amber-500 bg-amber-50 text-amber-900" : "border-stone-200"}`}>{checked && <Check size={15} />}{member.name}</button>; })}</div>{error && <p className="mt-2 text-sm text-rose-600">{error}</p>}<button type="button" disabled={!selected || changing || selected.id === currentUser.id} onClick={() => void change()} className={`mt-3 w-full ${primaryButtonClass}`}>{changing ? `${selected?.name ?? "사용자"}으로 변경 중...` : selected ? `${selected.name}으로 변경` : "사용자 선택"}</button></div>}</section>;
 }
 
 function MissingResponseView({ room, teamCode, members, menus }: { room: OrderRoom; teamCode: string; members: TeamMember[]; menus: Menu[] }) {
@@ -96,7 +114,7 @@ function MissingResponseView({ room, teamCode, members, menus }: { room: OrderRo
     try { await joinOrder(room.orderCode); }
     catch (value) { setJoinError(value instanceof Error ? value.message : "주문에 참여하지 못했습니다."); setJoining(false); }
   };
-  return <main className="mx-auto min-h-screen max-w-xl p-5 pb-12"><Link href={`/team/${teamCode}`} className="text-sm font-bold text-stone-500">← 주문방 목록</Link><section className="mt-5 rounded-3xl bg-stone-800 p-5 text-white"><h1 className="text-2xl font-black">{room.name}</h1><p className="mt-2 text-sm text-stone-300">{room.status === "OPEN" ? "아직 이 주문에 참여하지 않았어요." : "마감된 주문 결과를 읽기 전용으로 보고 있어요."}</p>{room.status === "OPEN" && <button type="button" disabled={joining} onClick={() => void participate()} className="mt-4 rounded-2xl bg-amber-500 px-4 py-3 text-sm font-bold text-stone-900 disabled:opacity-60">{joining ? "참여 중..." : "이 주문에 참여하기"}</button>}{joinError && <p className="mt-3 text-sm font-bold text-rose-300">{joinError}</p>}</section><section className="mt-5"><h2 className="text-xl font-black">전체 주문 현황</h2><div className="mt-3 rounded-3xl border border-stone-200 bg-white px-4">{room.orders.map((response) => { const member = members.find((item) => item.id === response.teamMemberId); const selectedMenu = menus.find((item) => item.id === response.menuId); return <div key={response.teamMemberId} className="flex items-center justify-between border-b border-stone-100 py-4 last:border-0"><div><p className="font-bold">{member?.name ?? "알 수 없는 팀원"}</p><p className="mt-1 text-xs text-stone-500">{selectedMenu ? `${selectedMenu.name} ${response.temperature}` : response.status === "PENDING" ? "아직 주문하지 않았어요" : ""}</p></div><OrderStatusBadge status={response.status} /></div>; })}</div></section></main>;
+  return <main className="mx-auto min-h-screen max-w-xl p-5 pb-12"><OrderUserSwitcher teamCode={teamCode} members={members} /><Link href={`/team/${teamCode}`} className="text-sm font-bold text-stone-500">← 주문방 목록</Link><section className={`mt-5 rounded-3xl p-5 ${primaryPanelClass}`}><h1 className="text-2xl font-black">{room.name}</h1><p className="mt-2 text-sm text-stone-600">{room.status === "OPEN" ? "아직 이 주문에 참여하지 않았어요." : "마감된 주문 결과를 읽기 전용으로 보고 있어요."}</p>{room.status === "OPEN" && <button type="button" disabled={joining} onClick={() => void participate()} className={`mt-4 px-4 ${primaryButtonClass}`}>{joining ? "참여 중..." : "이 주문에 참여하기"}</button>}{joinError && <p className="mt-3 text-sm font-bold text-rose-600">{joinError}</p>}</section><section className="mt-5"><h2 className="text-xl font-black">전체 주문 현황</h2><div className="mt-3 rounded-3xl border border-stone-200 bg-white px-4">{room.orders.map((response) => { const member = members.find((item) => item.id === response.teamMemberId); const selectedMenu = menus.find((item) => item.id === response.menuId); return <div key={response.teamMemberId} className="flex items-center justify-between border-b border-stone-100 py-4 last:border-0"><div><p className="font-bold">{member?.name ?? "알 수 없는 팀원"}</p><p className="mt-1 text-xs text-stone-500">{selectedMenu ? `${selectedMenu.name} ${response.temperature}` : response.status === "PENDING" ? "아직 주문하지 않았어요" : ""}</p></div><OrderStatusBadge status={response.status} /></div>; })}</div></section></main>;
 }
 
 export function RoomDetail({ room, teamCode, members }: { room: OrderRoom; teamCode: string; members?: TeamMember[] }) {
@@ -105,6 +123,7 @@ export function RoomDetail({ room, teamCode, members }: { room: OrderRoom; teamC
   const users = members ?? providerUsers;
   const [tab, setTab] = useState<"people" | "menu">("people");
   const [pickerFor, setPickerFor] = useState<string | null>(null);
+  const [actionFor, setActionFor] = useState<string | null>(null);
   const [recommendations, setRecommendations] = useState<Record<string, { frequent: MenuRecommendation | null; recent: MenuRecommendation | null }>>({});
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -128,6 +147,7 @@ export function RoomDetail({ room, teamCode, members }: { room: OrderRoom; teamC
     void Promise.all(users.map(async (member) => [member.id, await getRecommendations(member.id, room.cafeId)] as const)).then((items) => { if (active) setRecommendations(Object.fromEntries(items)); });
     return () => { active = false; };
   }, [room.cafeId, users]);
+  useEffect(() => { setIsMineEditing(mine?.status === "PENDING"); setPickerFor(null); setActionFor(null); }, [currentUser?.id, mine?.status]);
   if (!currentUser) return null;
   if (!mine) return <MissingResponseView room={room} teamCode={teamCode} members={users} menus={menus} />;
   const mineRec = recommendations[currentUser.id] ?? { frequent: null, recent: null };
@@ -140,26 +160,29 @@ export function RoomDetail({ room, teamCode, members }: { room: OrderRoom; teamC
   const removeRoom = async () => { if (isDeleting) return; setIsDeleting(true); setDeleteError(""); try { await deleteRoom(room.id); router.push(`/team/${teamCode}`); } catch (value) { setDeleteError(value instanceof Error ? value.message : "주문방을 삭제하지 못했습니다."); setIsDeleting(false); } };
   const summary = room.orders.filter((item) => item.status === "SELECTED" && item.menuId && item.temperature).reduce<Record<string, string[]>>((result, item) => {
     const key = `${item.menuId}|${item.temperature}`;
-    result[key] = [...(result[key] ?? []), users.find((user) => user.id === item.teamMemberId)?.name ?? "팀원"];
+    const orderedFor = users.find((user) => user.id === item.teamMemberId)?.name ?? "팀원";
+    const actor = item.selectedByMemberId && item.selectedByMemberId !== item.teamMemberId ? users.find((user) => user.id === item.selectedByMemberId)?.name : null;
+    result[key] = [...(result[key] ?? []), actor ? `${orderedFor} · ${actor}님이 대신 선택` : orderedFor];
     return result;
   }, {});
 
   return <main className="mx-auto min-h-screen max-w-xl p-5 pb-12">
+    <OrderUserSwitcher teamCode={teamCode} members={users} />
     <Link href={`/team/${teamCode}`} className="text-sm font-bold text-stone-500">← 주문방 목록</Link>
-    <section className="mt-5 rounded-3xl bg-stone-800 p-5 text-white">
-      <div className="flex items-start justify-between gap-3"><div><p className="text-sm font-bold text-amber-300">{cafe.emoji} {cafe.name}</p><h1 className="mt-1 text-2xl font-black">{room.name}</h1><p className="mt-3 text-sm text-stone-300">{creator?.name ?? "팀원"}님이 만들었어요</p></div><OrderStatusBadge status={room.status} /></div>
+    <section className={`mt-5 rounded-3xl p-5 ${primaryPanelClass}`}>
+      <div className="flex items-start justify-between gap-3"><div><p className="text-sm font-bold text-amber-700">{cafe.emoji} {cafe.name}</p><h1 className="mt-1 text-2xl font-black">{room.name}</h1><p className="mt-3 text-sm text-stone-600">{creator?.name ?? "팀원"}님이 만들었어요</p></div><OrderStatusBadge status={room.status} /></div>
     </section>
 
     <section className="mt-5 rounded-3xl border border-amber-200 bg-amber-50 p-5">
       <div className="flex justify-between"><div><p className="font-extrabold">{currentUser.name}님의 주문</p><p className="mt-1 text-sm text-stone-600">{mine.status === "SELECTED" ? `${menus.find((item) => item.id === mine.menuId)?.name} ${mine.temperature} · ✓ 주문 완료` : mine.status === "SKIP" ? "오늘 안 마심 · ✓ 선택 완료" : mine.status === "ABSENT" ? "휴가 / 부재 상태예요" : "아직 메뉴를 고르지 않았어요"}</p></div><OrderStatusBadge status={mine.status} /></div>
-      {isOpen && !isMineEditing && (mine.status === "SELECTED" || mine.status === "SKIP") && <button type="button" onClick={() => setIsMineEditing(true)} className="mt-4 text-sm font-bold text-amber-700 underline">주문 변경</button>}
+      {isOpen && !isMineEditing && mine.status !== "PENDING" && <button type="button" onClick={() => setIsMineEditing(true)} className="mt-4 flex min-h-11 items-center gap-2 rounded-xl px-3 text-sm font-bold text-amber-700 transition hover:bg-amber-100 active:scale-95"><Pencil size={16} />주문 변경</button>}
       {actionError && <p className="mt-3 text-sm font-bold text-rose-600">{actionError}</p>}
       {isOpen && isMineEditing && <div className="mt-4 space-y-3 transition-opacity duration-150">
         {mineRec.frequent && <Recommendation title="평소 먹던 메뉴" item={mineRec.frequent} menus={menus} merged={Boolean(sameMine)} onPick={() => chooseMine(mineRec.frequent!)} />}
         {mineRec.recent && !sameMine && <Recommendation title="최근 먹었던 메뉴" item={mineRec.recent} menus={menus} onPick={() => chooseMine(mineRec.recent!)} />}
         <p className="text-xs font-bold text-stone-500">다른 메뉴 고르기</p>
         <MenuPicker cafeId={room.cafeId} menus={menus} onAddMenu={addRoomMenu} onSelect={selectMine} />
-        <button type="button" disabled={isSkipping} onClick={() => void skipMine()} className="w-full rounded-2xl bg-stone-200 py-3 text-sm font-bold text-stone-600 disabled:opacity-60">{isSkipping ? "처리 중..." : "오늘은 안 마셔요"}</button>
+        <div className="grid gap-2 sm:grid-cols-3"><button type="button" disabled={isSkipping} onClick={() => void skipMine()} className="flex min-h-11 items-center justify-center gap-2 rounded-xl bg-stone-100 px-3 text-sm font-bold text-stone-700 disabled:opacity-60"><X size={16} />{isSkipping ? "처리 중..." : "오늘은 안 마셔요"}</button><button type="button" onClick={() => void updateOrder(room.id, currentUser.id, "PENDING").then(() => setIsMineEditing(false))} className="flex min-h-11 items-center justify-center gap-2 rounded-xl bg-stone-100 px-3 text-sm font-bold text-stone-700"><Circle size={16} />미선택으로</button><button type="button" onClick={() => setIsMineEditing(false)} className="flex min-h-11 items-center justify-center rounded-xl bg-white px-3 text-sm font-bold text-stone-500">취소</button></div>
       </div>}
     </section>
 
@@ -179,9 +202,10 @@ export function RoomDetail({ room, teamCode, members }: { room: OrderRoom; teamC
         const delegated = order.status === "SELECTED" && order.selectedByMemberId && order.selectedByMemberId !== order.teamMemberId;
         return <div key={order.teamMemberId} className={`border-b border-stone-100 px-2 py-4 last:border-0 ${isMe ? "my-1 rounded-2xl border border-amber-100 bg-amber-50/60" : ""}`}><div className="flex items-center gap-3"><span className={`grid size-10 place-items-center rounded-full font-black ${isMe ? "bg-amber-100 text-amber-800" : "bg-stone-100 text-stone-600"}`}>{user.name.slice(0, 1)}</span><div className="min-w-0 flex-1"><p className="flex items-center gap-2 font-bold">{user.name}{isMe && <span className="rounded-full bg-amber-200/70 px-2 py-0.5 text-[10px] font-black text-amber-900">나</span>}</p><p className="mt-0.5 text-xs text-stone-500">{selectedMenu ? `${selectedMenu.name} ${order.temperature}` : order.status === "PENDING" ? "아직 주문하지 않았어요" : order.status === "SKIP" ? "오늘 안 마심" : order.status === "ABSENT" && order.markedByMemberId ? `${memberName(order.markedByMemberId)}님이 표시` : order.status === "ABSENT" ? "휴가 / 부재" : ""}</p>{delegated && <p className="mt-0.5 text-[11px] text-stone-400">{memberName(order.selectedByMemberId)}님이 대신 선택</p>}</div><OrderStatusBadge status={order.status} /></div>
           {isOpen && order.status === "PENDING" && <div className="ml-[52px] mt-3 rounded-2xl bg-stone-50 p-3"><p className="text-xs font-bold text-stone-500">평소 먹던 메뉴</p>{rec.frequent ? <button type="button" onClick={() => void choose(user.id, rec.frequent!)} className="mt-1 rounded-lg bg-amber-50 px-2 py-1 text-[11px] font-bold text-amber-800">{menuText(rec.frequent, menus)}로 주문</button> : <p className="mt-1 text-xs text-stone-400">주문 이력이 없어요.</p>}{rec.recent && !same && <><p className="mt-3 text-xs font-bold text-stone-500">최근 먹었던 메뉴</p><button type="button" onClick={() => void choose(user.id, rec.recent!)} className="mt-1 rounded-lg bg-amber-50 px-2 py-1 text-[11px] font-bold text-amber-800">{menuText(rec.recent, menus)}로 주문</button></>}<div className="mt-3 flex gap-3"><button type="button" onClick={() => setPickerFor(pickerFor === user.id ? null : user.id)} className="text-xs font-bold text-stone-600 underline">다른 메뉴 골라주기</button><button type="button" onClick={() => void updateOrder(room.id, user.id, "ABSENT")} className="text-xs font-bold text-violet-700 underline">휴가/부재</button></div>{pickerFor === user.id && <div className="mt-3"><MenuPicker cafeId={room.cafeId} menus={menus} onAddMenu={addRoomMenu} onSelect={async (menu, temperature) => { await updateOrder(room.id, user.id, "SELECTED", { menuId: menu.id, temperature }); setPickerFor(null); }} /></div>}</div>}
-          {isOpen && order.status === "ABSENT" && <button type="button" onClick={() => updateOrder(room.id, user.id, "PENDING")} className="ml-[52px] mt-2 text-[11px] font-bold text-stone-500 underline">부재 취소</button>}
+          {isOpen && order.status !== "PENDING" && <button type="button" onClick={() => setActionFor(actionFor === user.id ? null : user.id)} className="ml-[52px] mt-2 flex min-h-11 items-center gap-2 rounded-xl px-3 text-xs font-bold text-stone-600 hover:bg-stone-50"><Pencil size={14} />변경</button>}
+          {isOpen && actionFor === user.id && <div className="ml-[52px] mt-2 rounded-2xl border border-stone-200 bg-stone-50 p-3"><p className="text-xs font-bold text-stone-500">현재 주문 변경</p><div className="mt-3"><MenuPicker cafeId={room.cafeId} menus={menus} onAddMenu={addRoomMenu} onSelect={async (menu, temperature) => { await updateOrder(room.id, user.id, "SELECTED", { menuId: menu.id, temperature }); setActionFor(null); }} /></div><div className="mt-3 grid gap-2 sm:grid-cols-2"><button type="button" onClick={() => void updateOrder(room.id, user.id, "SKIP").then(() => setActionFor(null))} className="flex min-h-11 items-center justify-center gap-2 rounded-xl bg-white text-xs font-bold"><X size={15} />오늘은 안 마셔요</button><button type="button" onClick={() => void updateOrder(room.id, user.id, "PENDING").then(() => setActionFor(null))} className="flex min-h-11 items-center justify-center gap-2 rounded-xl bg-white text-xs font-bold"><Circle size={15} />미선택으로 되돌리기</button><button type="button" onClick={() => void updateOrder(room.id, user.id, "ABSENT").then(() => setActionFor(null))} className="flex min-h-11 items-center justify-center rounded-xl bg-white text-xs font-bold">휴가 / 부재</button><button type="button" onClick={() => setActionFor(null)} className="flex min-h-11 items-center justify-center rounded-xl bg-stone-200 text-xs font-bold">취소</button></div></div>}
         </div>;
-      })}</div> : <div className="mt-3 rounded-3xl border border-stone-200 bg-white px-4">{Object.keys(summary).length ? Object.entries(summary).map(([key, people]) => { const [menuId, temperature] = key.split("|"); return <div key={key} className="flex justify-between border-b border-stone-100 py-4 font-bold last:border-0"><div><p>{menus.find((item) => item.id === menuId)?.name ?? "추가 메뉴"} {temperature}</p>{!isOpen && <p className="mt-1 text-xs font-normal text-stone-500">{people.join(", ")}</p>}</div><span className="text-amber-700">× {people.length}</span></div>; }) : <p className="py-8 text-center text-sm text-stone-500">아직 선택된 메뉴가 없어요.</p>}</div>}
+      })}</div> : <div className="mt-3 rounded-3xl border border-stone-200 bg-white px-4">{Object.keys(summary).length ? Object.entries(summary).map(([key, people]) => { const [menuId, temperature] = key.split("|"); return <div key={key} className="flex justify-between gap-4 border-b border-stone-100 py-4 font-bold last:border-0"><div><p>{menus.find((item) => item.id === menuId)?.name ?? "추가 메뉴"} {temperature}</p><p className="mt-2 text-xs font-normal leading-5 text-stone-500">{people.join(" · ")}</p></div><span className="shrink-0 text-amber-700">× {people.length}</span></div>; }) : <p className="py-8 text-center text-sm text-stone-500">아직 선택된 메뉴가 없어요.</p>}</div>}
     </section>
   </main>;
 }
